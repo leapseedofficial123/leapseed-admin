@@ -15,7 +15,7 @@ export const DEAL_PATTERN_OPTIONS = [
 ] as const;
 
 export const DEFAULT_COMPENSATION_TYPES: CompensationType[] = [
-  { id: "AC", label: "AC", active: true, dealPattern: "AC", note: "Bのみで完結" },
+  { id: "AC", label: "AC", active: true, dealPattern: "AC", note: "Bのみで完結した案件" },
   {
     id: "ABC_A",
     label: "ABC_A",

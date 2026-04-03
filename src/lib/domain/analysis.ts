@@ -49,6 +49,37 @@ export interface AnalysisMemberSummary {
   rewardTotal: number;
 }
 
+export interface MemberMonthlyHistoryRow {
+  month: string;
+  year: string;
+  dealCount: number;
+  monthlySales: number;
+  projectReward: number;
+  referralReward: number;
+  executiveReward: number;
+  adjustment: number;
+  personalExpense: number;
+  finalSalary: number;
+}
+
+export interface MemberYearlyHistoryRow {
+  year: string;
+  dealCount: number;
+  monthlySales: number;
+  projectReward: number;
+  referralReward: number;
+  executiveReward: number;
+  adjustment: number;
+  personalExpense: number;
+  finalSalary: number;
+}
+
+export interface MemberHistoryResult {
+  memberId: string;
+  monthlyRows: MemberMonthlyHistoryRow[];
+  yearlyRows: MemberYearlyHistoryRow[];
+}
+
 export type AnalysisProductSummary = ProductSummary;
 
 export interface CompanyAnalysisResult {
@@ -347,5 +378,68 @@ export function buildCompanyAnalysis(
     productSummaries,
     snapshotsByMonth,
     totals,
+  };
+}
+
+export function buildMemberHistory(
+  store: AppDataStore,
+  memberId: string,
+): MemberHistoryResult {
+  const monthlyRows = getTrackedMonths(store)
+    .map((month) => {
+      const snapshot = buildMonthlyPayroll(store, month);
+      const summary = snapshot.memberSummaries.find((item) => item.memberId === memberId);
+
+      if (!summary) {
+        return null;
+      }
+
+      return {
+        month,
+        year: month.slice(0, 4),
+        dealCount: summary.dealDetails.length,
+        monthlySales: summary.monthlySales,
+        projectReward: summary.projectReward,
+        referralReward: summary.referralReward,
+        executiveReward: summary.executiveReward,
+        adjustment: summary.adjustment,
+        personalExpense: summary.personalExpense,
+        finalSalary: summary.finalSalary,
+      };
+    })
+    .filter((row): row is MemberMonthlyHistoryRow => Boolean(row))
+    .sort((left, right) => right.month.localeCompare(left.month));
+
+  const yearlyMap = monthlyRows.reduce<Record<string, MemberYearlyHistoryRow>>((accumulator, row) => {
+    if (!accumulator[row.year]) {
+      accumulator[row.year] = {
+        year: row.year,
+        dealCount: 0,
+        monthlySales: 0,
+        projectReward: 0,
+        referralReward: 0,
+        executiveReward: 0,
+        adjustment: 0,
+        personalExpense: 0,
+        finalSalary: 0,
+      };
+    }
+
+    accumulator[row.year].dealCount += row.dealCount;
+    accumulator[row.year].monthlySales += row.monthlySales;
+    accumulator[row.year].projectReward += row.projectReward;
+    accumulator[row.year].referralReward += row.referralReward;
+    accumulator[row.year].executiveReward += row.executiveReward;
+    accumulator[row.year].adjustment += row.adjustment;
+    accumulator[row.year].personalExpense += row.personalExpense;
+    accumulator[row.year].finalSalary += row.finalSalary;
+
+    return accumulator;
+  }, {});
+
+  return {
+    memberId,
+    monthlyRows,
+    yearlyRows: Object.values(yearlyMap).sort((left, right) => right.year.localeCompare(left.year)),
   };
 }

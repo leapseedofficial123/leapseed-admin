@@ -293,6 +293,32 @@ export function createSampleAppDataStore(): AppDataStore {
         note: "精算",
       },
     ],
+    memberExpenses: [
+      {
+        id: "expense_1",
+        month: "2026-03",
+        memberId: "member_taketo",
+        amount: 18_000,
+        category: "交通費",
+        note: "訪問交通費",
+      },
+      {
+        id: "expense_2",
+        month: "2026-03",
+        memberId: "member_yuya",
+        amount: 26_000,
+        category: "広告費",
+        note: "個人立替",
+      },
+      {
+        id: "expense_3",
+        month: "2026-02",
+        memberId: "member_taketo",
+        amount: 9_000,
+        category: "通信費",
+        note: "",
+      },
+    ],
     preferences: {
       displayMonth: "2026-03",
     },

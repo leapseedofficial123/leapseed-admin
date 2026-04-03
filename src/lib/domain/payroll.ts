@@ -277,6 +277,16 @@ export function buildMonthlyPayroll(
       (adjustmentByMemberId[adjustment.memberId] ?? 0) + adjustment.amount;
   }
 
+  const personalExpenseByMemberId: Record<string, number> = {};
+  for (const expense of store.memberExpenses) {
+    if (expense.month !== month) {
+      continue;
+    }
+
+    personalExpenseByMemberId[expense.memberId] =
+      (personalExpenseByMemberId[expense.memberId] ?? 0) + expense.amount;
+  }
+
   const baseSalaryByMemberId: Record<string, number> = {};
   for (const member of store.members) {
     baseSalaryByMemberId[member.id] = roundMoney(
@@ -329,6 +339,7 @@ export function buildMonthlyPayroll(
       const projectReward = roundMoney(projectRewardByMemberId[member.id] ?? 0);
       const executiveReward = roundMoney(executiveRewardByMemberId[member.id] ?? 0);
       const adjustment = roundMoney(adjustmentByMemberId[member.id] ?? 0);
+      const personalExpense = roundMoney(personalExpenseByMemberId[member.id] ?? 0);
       const finalSalary = roundMoney(
         referralSolution.finalByMemberId[member.id] ?? baseSalaryByMemberId[member.id] ?? 0,
       );
@@ -349,6 +360,7 @@ export function buildMonthlyPayroll(
         referralReward,
         executiveReward,
         adjustment,
+        personalExpense,
         finalSalary,
         dealDetails: (detailByMemberId[member.id] ?? []).sort((left, right) =>
           left.closedOn.localeCompare(right.closedOn),
@@ -399,6 +411,9 @@ export function buildMonthlyPayroll(
   const totalAdjustments = roundMoney(
     memberSummaries.reduce((sum, summary) => sum + summary.adjustment, 0),
   );
+  const totalPersonalExpenses = roundMoney(
+    memberSummaries.reduce((sum, summary) => sum + summary.personalExpense, 0),
+  );
   const totalSalary = roundMoney(
     memberSummaries.reduce((sum, summary) => sum + summary.finalSalary, 0),
   );
@@ -412,6 +427,7 @@ export function buildMonthlyPayroll(
     totalReferralReward,
     totalExecutiveReward,
     totalAdjustments,
+    totalPersonalExpenses,
     totalSalary,
     expenses,
     profit: roundMoney(totalCompanyShare - totalSalary - expenses),
@@ -434,6 +450,10 @@ export function getTrackedMonths(store: AppDataStore): string[] {
 
   for (const adjustment of store.salaryAdjustments) {
     months.add(adjustment.month);
+  }
+
+  for (const expense of store.memberExpenses) {
+    months.add(expense.month);
   }
 
   months.add(store.preferences.displayMonth);

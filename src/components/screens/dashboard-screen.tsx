@@ -1,43 +1,45 @@
 "use client";
 
+import Link from "next/link";
 import { Badge, EmptyState, PageSection, StatCard } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
 import { formatCurrency, formatMonthLabel, formatNumber } from "@/lib/format";
 
 export function DashboardScreen() {
-  const { currentSnapshot, selectedMonth } = useAppState();
+  const { currentSnapshot, selectedMonth, companyTrend } = useAppState();
   const salaryRanking = [...currentSnapshot.memberSummaries]
     .filter((summary) => summary.finalSalary !== 0)
     .sort((left, right) => right.finalSalary - left.finalSalary);
   const productRanking = [...currentSnapshot.productSummaries];
+  const recentTrend = [...companyTrend].sort((left, right) => right.month.localeCompare(left.month)).slice(0, 6);
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-4">
         <StatCard
-          label={`${formatMonthLabel(selectedMonth)}の会社全体売上`}
+          label={`${formatMonthLabel(selectedMonth)}の会社売上`}
           value={formatCurrency(currentSnapshot.totalSales)}
-          caption="案件は1件につき1回だけ集計"
+          caption="会社売上に計上する案件のみ"
         />
         <StatCard
           label="会社取り分"
           value={formatCurrency(currentSnapshot.totalCompanyShare)}
-          caption="個人売上とは分離して管理"
+          caption="報酬計算のベース"
         />
         <StatCard
           label="全体給料合計"
           value={formatCurrency(currentSnapshot.totalSalary)}
-          caption="案件報酬・紹介報酬・役員報酬・調整額"
+          caption="案件報酬・紹介報酬・役員報酬・調整額を反映"
         />
         <StatCard
-          label="役員報酬合計"
-          value={formatCurrency(currentSnapshot.totalExecutiveReward)}
-          caption="会社取り分合計を母数に算出"
+          label="今月の利益"
+          value={formatCurrency(currentSnapshot.profit)}
+          caption="会社取り分 - 全体給料 - 会社経費"
         />
       </div>
 
       {currentSnapshot.warnings.length ? (
-        <PageSection title="確認メモ" description="入力不足や計算上の注意点です。">
+        <PageSection title="確認メモ" description="入力不足や計算上の注意点がある場合に表示します。">
           <div className="space-y-2">
             {currentSnapshot.warnings.map((warning) => (
               <div
@@ -51,9 +53,98 @@ export function DashboardScreen() {
         </PageSection>
       ) : null}
 
+      <PageSection
+        title="よく使う画面"
+        description="毎月の入力と確認で使う画面をここからすぐ開けます。"
+      >
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {[
+            {
+              href: "/deals",
+              title: "売上入力",
+              description: "誰が成約したか、どの商品か、案件形態は何かを入力",
+            },
+            {
+              href: "/monthly",
+              title: "月次集計",
+              description: "メンバー別の給料、個人経費、給与明細CSVを確認",
+            },
+            {
+              href: "/company",
+              title: "会社分析",
+              description: "月ごとの売上・利益・案件台帳を分析してCSV出力",
+            },
+            {
+              href: "/rates",
+              title: "計算設定",
+              description: "報酬率や計算ロジックのベース設定を管理",
+            },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:bg-white"
+            >
+              <p className="font-semibold text-slate-900">{item.title}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>
+            </Link>
+          ))}
+        </div>
+      </PageSection>
+
+      <PageSection
+        title="直近の月次推移"
+        description="会社売上と利益の流れを直近6か月で確認できます。"
+      >
+        {recentTrend.length ? (
+          <div className="space-y-3">
+            {recentTrend.map((point) => (
+              <div
+                key={point.month}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-4"
+              >
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-lg font-semibold text-slate-900">
+                      {formatMonthLabel(point.month)}
+                    </p>
+                    {point.month === selectedMonth ? <Badge tone="teal">表示中</Badge> : null}
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-4">
+                    <div>
+                      <p className="text-xs text-slate-500">売上</p>
+                      <p className="font-semibold text-slate-900">{formatCurrency(point.totalSales)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">会社取り分</p>
+                      <p className="font-semibold text-slate-900">
+                        {formatCurrency(point.totalCompanyShare)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">全体給料</p>
+                      <p className="font-semibold text-slate-900">{formatCurrency(point.totalSalary)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">利益</p>
+                      <p className="font-semibold text-slate-900">{formatCurrency(point.profit)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="月次推移データがまだありません"
+            description="売上入力と会社設定を入れていくと、ここに月次の流れが表示されます。"
+          />
+        )}
+      </PageSection>
+
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <PageSection
-          title="メンバー別給料ランキング"
+          title="メンバー別ランキング"
           description="今月の最終給料順です。"
         >
           {salaryRanking.length ? (
@@ -70,13 +161,14 @@ export function DashboardScreen() {
                     <div>
                       <p className="font-medium text-slate-900">{summary.memberName}</p>
                       <p className="text-sm text-slate-500">
-                        個人売上 {formatCurrency(summary.monthlySales)} / 帯 {summary.appliedBandLabel}
+                        売上 {formatCurrency(summary.monthlySales)} / 個人経費{" "}
+                        {formatCurrency(summary.personalExpense)}
                       </p>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {summary.isExecutive ? <Badge tone="amber">役員</Badge> : null}
-                    {summary.referralReward > 0 ? <Badge tone="teal">紹介あり</Badge> : null}
+                    {summary.referralReward > 0 ? <Badge tone="teal">紹介報酬あり</Badge> : null}
                     <p className="text-lg font-semibold text-slate-900">
                       {formatCurrency(summary.finalSalary)}
                     </p>
@@ -86,15 +178,15 @@ export function DashboardScreen() {
             </div>
           ) : (
             <EmptyState
-              title="まだ給料データがありません"
-              description="案件やメンバーを登録すると、ここにランキングが表示されます。"
+              title="まだ給与データがありません"
+              description="売上入力を進めると、ここにメンバー別のランキングが表示されます。"
             />
           )}
         </PageSection>
 
         <PageSection
-          title="商品別売上ランキング"
-          description="商品ごとの売上と会社取り分です。"
+          title="商品別ランキング"
+          description="今月の売上上位商品です。"
         >
           {productRanking.length ? (
             <div className="space-y-2">
@@ -112,7 +204,7 @@ export function DashboardScreen() {
                   </div>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     <div>
-                      <p className="text-xs text-slate-500">売上合計</p>
+                      <p className="text-xs text-slate-500">売価合計</p>
                       <p className="font-semibold text-slate-900">
                         {formatCurrency(product.totalSales)}
                       </p>
@@ -129,8 +221,8 @@ export function DashboardScreen() {
             </div>
           ) : (
             <EmptyState
-              title="まだ商品集計がありません"
-              description="案件を登録すると、ここに商品別の集計が表示されます。"
+              title="まだ商品別集計がありません"
+              description="売上入力を進めると、ここに商品ごとの集計が表示されます。"
             />
           )}
         </PageSection>
@@ -138,9 +230,9 @@ export function DashboardScreen() {
 
       <PageSection
         title="今月の集計メモ"
-        description="個人の売上帯判定は、その月に関与した案件の売価合計で見ます。"
+        description="今月の報酬内訳をまとめています。"
       >
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-500">案件報酬合計</p>
             <p className="mt-2 text-xl font-semibold text-slate-900">
@@ -148,13 +240,19 @@ export function DashboardScreen() {
             </p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm text-slate-500">紹介報酬合計</p>
+            <p className="text-sm text-slate-500">直紹介報酬合計</p>
             <p className="mt-2 text-xl font-semibold text-slate-900">
               {formatCurrency(currentSnapshot.totalReferralReward)}
             </p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm text-slate-500">対象案件数</p>
+            <p className="text-sm text-slate-500">役員報酬合計</p>
+            <p className="mt-2 text-xl font-semibold text-slate-900">
+              {formatCurrency(currentSnapshot.totalExecutiveReward)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm text-slate-500">案件数</p>
             <p className="mt-2 text-xl font-semibold text-slate-900">
               {formatNumber(
                 currentSnapshot.productSummaries.reduce(

@@ -8,6 +8,7 @@ import type {
   CompensationType,
   Deal,
   DealParticipant,
+  MemberExpense,
   Member,
   MonthlySetting,
   Product,
@@ -56,6 +57,7 @@ function normalizeStore(raw: unknown): AppDataStore {
       ? asArray<MonthlySetting>(candidate.monthlySettings)
       : fallback.monthlySettings,
     salaryAdjustments: asArray<SalaryAdjustment>(candidate.salaryAdjustments),
+    memberExpenses: asArray<MemberExpense>(candidate.memberExpenses),
     preferences: {
       displayMonth:
         candidate.preferences?.displayMonth || fallback.preferences.displayMonth,
@@ -67,12 +69,12 @@ export function createBrowserRepository(): AppRepository {
   return {
     load() {
       if (typeof window === "undefined") {
-        return createSampleAppDataStore();
+        return createBlankAppDataStore(getCurrentMonth());
       }
 
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) {
-        const initial = createSampleAppDataStore();
+        const initial = createBlankAppDataStore(getCurrentMonth());
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
         return initial;
       }
@@ -80,7 +82,7 @@ export function createBrowserRepository(): AppRepository {
       try {
         return normalizeStore(JSON.parse(raw));
       } catch {
-        return createSampleAppDataStore();
+        return createBlankAppDataStore(getCurrentMonth());
       }
     },
     save(store) {

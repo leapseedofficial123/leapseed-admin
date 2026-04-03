@@ -16,6 +16,7 @@ import type {
   CompensationType,
   Deal,
   DealParticipant,
+  MemberExpense,
   Member,
   MonthlyPayrollSnapshot,
   MonthlySetting,
@@ -55,6 +56,8 @@ interface AppStateContextValue {
   saveMonthlySetting: (setting: MonthlySetting) => void;
   saveSalaryAdjustment: (adjustment: SalaryAdjustment) => void;
   deleteSalaryAdjustment: (adjustmentId: string) => void;
+  saveMemberExpense: (expense: MemberExpense) => void;
+  deleteMemberExpense: (expenseId: string) => void;
   exportJson: () => string;
   importJson: (raw: string) => void;
   resetData: (mode: "sample" | "blank") => void;
@@ -144,6 +147,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         ),
         salaryAdjustments: current.salaryAdjustments.filter(
           (adjustment) => adjustment.memberId !== memberId,
+        ),
+        memberExpenses: current.memberExpenses.filter(
+          (expense) => expense.memberId !== memberId,
         ),
       }));
     },
@@ -289,6 +295,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         salaryAdjustments: current.salaryAdjustments.filter(
           (adjustment) => adjustment.id !== adjustmentId,
         ),
+      }));
+    },
+    saveMemberExpense(expense) {
+      setStore((current) => ({
+        ...current,
+        memberExpenses: upsertById(current.memberExpenses, expense),
+      }));
+    },
+    deleteMemberExpense(expenseId) {
+      setStore((current) => ({
+        ...current,
+        memberExpenses: current.memberExpenses.filter((expense) => expense.id !== expenseId),
       }));
     },
     exportJson() {

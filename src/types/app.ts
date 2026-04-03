@@ -89,6 +89,15 @@ export interface SalaryAdjustment {
   note: string;
 }
 
+export interface MemberExpense {
+  id: string;
+  month: string;
+  memberId: string;
+  amount: number;
+  category: string;
+  note: string;
+}
+
 export interface AppPreferences {
   displayMonth: string;
 }
@@ -104,6 +113,7 @@ export interface AppDataStore {
   compensationBands: CompensationBand[];
   monthlySettings: MonthlySetting[];
   salaryAdjustments: SalaryAdjustment[];
+  memberExpenses: MemberExpense[];
   preferences: AppPreferences;
 }
 
@@ -144,6 +154,7 @@ export interface MonthlyMemberSummary {
   referralReward: number;
   executiveReward: number;
   adjustment: number;
+  personalExpense: number;
   finalSalary: number;
   dealDetails: ParticipantRewardDetail[];
   referralDetails: ReferralRewardDetail[];
@@ -173,6 +184,7 @@ export interface MonthlyPayrollSnapshot {
   totalReferralReward: number;
   totalExecutiveReward: number;
   totalAdjustments: number;
+  totalPersonalExpenses: number;
   totalSalary: number;
   expenses: number;
   profit: number;

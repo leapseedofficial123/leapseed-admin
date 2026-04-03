@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Badge,
   EmptyState,
@@ -12,7 +12,13 @@ import {
   Textarea,
 } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
-import { formatPercent, parseNumberInput, toInputString } from "@/lib/format";
+import { downloadCsv } from "@/lib/csv";
+import { buildMemberHistory } from "@/lib/domain/analysis";
+import {
+  buildMemberHistoryCsvRows,
+  buildMemberStatementCsvRows,
+} from "@/lib/domain/exports";
+import { formatCurrency, formatPercent, toInputString, parseNumberInput } from "@/lib/format";
 import { createId } from "@/lib/ids";
 
 interface MemberFormState {
@@ -39,12 +45,23 @@ function createEmptyMemberForm(nextOrder: number): MemberFormState {
 }
 
 export function MembersScreen() {
-  const { store, saveMember, deleteMember } = useAppState();
+  const { store, selectedMonth, currentSnapshot, saveMember, deleteMember } = useAppState();
+  const [panelMode, setPanelMode] = useState<"edit" | "history" | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string>("");
   const [form, setForm] = useState<MemberFormState>(() =>
     createEmptyMemberForm(store.members.length + 1),
   );
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [error, setError] = useState("");
+
+  const selectedMember = store.members.find((member) => member.id === selectedMemberId);
+  const selectedMemberCurrentSummary = currentSnapshot.memberSummaries.find(
+    (summary) => summary.memberId === selectedMemberId,
+  );
+  const selectedMemberHistory = useMemo(
+    () =>
+      selectedMemberId ? buildMemberHistory(store, selectedMemberId) : { monthlyRows: [], yearlyRows: [], memberId: "" },
+    [selectedMemberId, store],
+  );
 
   const resetForm = () => {
     setForm(createEmptyMemberForm(store.members.length + 1));
@@ -52,13 +69,15 @@ export function MembersScreen() {
   };
 
   const closePanel = () => {
-    setIsPanelOpen(false);
+    setPanelMode(null);
+    setSelectedMemberId("");
     resetForm();
   };
 
   const openCreatePanel = () => {
+    setSelectedMemberId("");
     resetForm();
-    setIsPanelOpen(true);
+    setPanelMode("edit");
   };
 
   const openEditPanel = (memberId: string) => {
@@ -67,6 +86,7 @@ export function MembersScreen() {
       return;
     }
 
+    setSelectedMemberId(member.id);
     setForm({
       id: member.id,
       name: member.name,
@@ -78,12 +98,17 @@ export function MembersScreen() {
       note: member.note,
     });
     setError("");
-    setIsPanelOpen(true);
+    setPanelMode("edit");
+  };
+
+  const openHistoryPanel = (memberId: string) => {
+    setSelectedMemberId(memberId);
+    setPanelMode("history");
   };
 
   const handleSubmit = () => {
     if (!form.name.trim()) {
-      setError("メンバー名は必須です。");
+      setError("メンバー名を入力してください。");
       return;
     }
 
@@ -105,14 +130,14 @@ export function MembersScreen() {
     <>
       <PageSection
         title="メンバー一覧"
-        description="一覧から編集を開く形にしています。追加するときだけ登録フォームを表示します。"
+        description="メンバー登録に加えて、各メンバーの月次・年次の売上履歴と給与履歴もここから確認できます。"
         action={
           <button
             type="button"
             onClick={openCreatePanel}
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800"
           >
-            メンバー追加
+            メンバーを追加
           </button>
         }
       >
@@ -120,63 +145,80 @@ export function MembersScreen() {
           <div className="space-y-3">
             {[...store.members]
               .sort((left, right) => left.displayOrder - right.displayOrder)
-              .map((member) => (
-                <div
-                  key={member.id}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-lg font-semibold text-slate-900">{member.name}</p>
-                        <Badge tone={member.isActive ? "teal" : "rose"}>
-                          {member.isActive ? "在籍中" : "停止"}
-                        </Badge>
-                        {member.isExecutive ? <Badge tone="amber">役員</Badge> : null}
+              .map((member) => {
+                const summary = currentSnapshot.memberSummaries.find(
+                  (item) => item.memberId === member.id,
+                );
+
+                return (
+                  <div
+                    key={member.id}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4"
+                  >
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-lg font-semibold text-slate-900">{member.name}</p>
+                          <Badge tone={member.isActive ? "teal" : "rose"}>
+                            {member.isActive ? "在籍中" : "休止"}
+                          </Badge>
+                          {member.isExecutive ? <Badge tone="amber">役員</Badge> : null}
+                        </div>
+                        <p className="text-sm text-slate-500">
+                          表示順 {member.displayOrder} / 直紹介初期率{" "}
+                          {formatPercent(member.defaultReferralRate)}
+                          {member.isExecutive
+                            ? ` / 役員報酬率 ${formatPercent(member.executiveCompensationRate)}`
+                            : ""}
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          今月売上 {formatCurrency(summary?.monthlySales ?? 0)} / 今月最終給料{" "}
+                          {formatCurrency(summary?.finalSalary ?? 0)}
+                        </p>
+                        {member.note ? (
+                          <p className="text-sm leading-6 text-slate-600">{member.note}</p>
+                        ) : null}
                       </div>
-                      <p className="text-sm text-slate-500">
-                        表示順 {member.displayOrder} / 直紹介初期率{" "}
-                        {formatPercent(member.defaultReferralRate)}
-                        {member.isExecutive
-                          ? ` / 役員報酬率 ${formatPercent(member.executiveCompensationRate)}`
-                          : ""}
-                      </p>
-                      {member.note ? (
-                        <p className="text-sm leading-6 text-slate-600">{member.note}</p>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditPanel(member.id)}
-                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
-                      >
-                        編集
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteMember(member.id)}
-                        className="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50"
-                      >
-                        削除
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openHistoryPanel(member.id)}
+                          className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                        >
+                          履歴
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEditPanel(member.id)}
+                          className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                        >
+                          編集
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteMember(member.id)}
+                          className="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50"
+                        >
+                          削除
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
         ) : (
           <EmptyState
-            title="メンバーがまだありません"
-            description="メンバー追加から登録すると、ここに一覧表示されます。"
+            title="メンバーがまだ登録されていません"
+            description="まずはメンバーを追加してください。"
           />
         )}
       </PageSection>
 
       <OverlayPanel
-        open={isPanelOpen}
-        title={form.id ? "メンバー編集" : "メンバー登録"}
-        description="在籍管理、役員フラグ、直紹介初期率までまとめて設定できます。"
+        open={panelMode === "edit"}
+        title={form.id ? "メンバーを編集" : "メンバーを登録"}
+        description="在籍状況、役員設定、直紹介の初期率までまとめて登録できます。"
         onClose={closePanel}
       >
         <div className="grid gap-4 md:grid-cols-2">
@@ -185,7 +227,7 @@ export function MembersScreen() {
             <Input
               value={form.name}
               onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-              placeholder="例: 伊藤綾音"
+              placeholder="例: 田中 太郎"
             />
           </div>
           <div>
@@ -199,7 +241,7 @@ export function MembersScreen() {
             />
           </div>
           <div>
-            <Label>在籍状況</Label>
+            <Label>在籍状態</Label>
             <Select
               value={form.isActive ? "active" : "inactive"}
               onChange={(event) =>
@@ -210,7 +252,7 @@ export function MembersScreen() {
               }
             >
               <option value="active">在籍中</option>
-              <option value="inactive">停止・退職</option>
+              <option value="inactive">休止</option>
             </Select>
           </div>
           <div>
@@ -243,7 +285,7 @@ export function MembersScreen() {
             />
           </div>
           <div>
-            <Label>直紹介報酬率 初期値</Label>
+            <Label>直紹介報酬率の初期値</Label>
             <Input
               value={form.defaultReferralRate}
               onChange={(event) =>
@@ -257,11 +299,11 @@ export function MembersScreen() {
             />
           </div>
           <div className="md:col-span-2">
-            <Label>備考</Label>
+            <Label>メモ</Label>
             <Textarea
               value={form.note}
               onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
-              placeholder="補足があれば入力"
+              placeholder="補足があれば記入"
             />
           </div>
         </div>
@@ -278,7 +320,7 @@ export function MembersScreen() {
             onClick={handleSubmit}
             className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm text-white transition hover:bg-slate-800"
           >
-            {form.id ? "メンバー更新" : "メンバー追加"}
+            保存
           </button>
           <button
             type="button"
@@ -288,6 +330,156 @@ export function MembersScreen() {
             キャンセル
           </button>
         </div>
+      </OverlayPanel>
+
+      <OverlayPanel
+        open={panelMode === "history"}
+        title={selectedMember ? `${selectedMember.name} の履歴` : "メンバー履歴"}
+        description="月別・年別の売上と報酬の推移を確認できます。"
+        onClose={closePanel}
+      >
+        {selectedMember ? (
+          <>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  downloadCsv(
+                    `leapseed-member-history-${selectedMember.name}.csv`,
+                    buildMemberHistoryCsvRows(store, selectedMember.id),
+                  )
+                }
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+              >
+                売上履歴CSV
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  downloadCsv(
+                    `leapseed-statement-${selectedMonth}-${selectedMember.name}.csv`,
+                    buildMemberStatementCsvRows(store, selectedMonth, selectedMember.id),
+                  )
+                }
+                disabled={!selectedMemberCurrentSummary}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                今月の給与明細CSV
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">今月売上</p>
+                <p className="mt-2 text-xl font-semibold text-slate-900">
+                  {formatCurrency(selectedMemberCurrentSummary?.monthlySales ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">今月最終給料</p>
+                <p className="mt-2 text-xl font-semibold text-slate-900">
+                  {formatCurrency(selectedMemberCurrentSummary?.finalSalary ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">今月個人経費</p>
+                <p className="mt-2 text-xl font-semibold text-slate-900">
+                  {formatCurrency(selectedMemberCurrentSummary?.personalExpense ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">累計月数</p>
+                <p className="mt-2 text-xl font-semibold text-slate-900">
+                  {selectedMemberHistory.monthlyRows.length}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <p className="mb-3 text-sm font-semibold text-slate-900">年別サマリー</p>
+              {selectedMemberHistory.yearlyRows.length ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="text-slate-500">
+                      <tr>
+                        <th className="pb-3 pr-4">年</th>
+                        <th className="pb-3 pr-4">案件数</th>
+                        <th className="pb-3 pr-4">売上</th>
+                        <th className="pb-3 pr-4">案件報酬</th>
+                        <th className="pb-3 pr-4">個人経費</th>
+                        <th className="pb-3">最終給料</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedMemberHistory.yearlyRows.map((row) => (
+                        <tr key={row.year} className="border-t border-slate-100">
+                          <td className="py-3 pr-4 font-medium text-slate-900">{row.year}</td>
+                          <td className="py-3 pr-4">{row.dealCount}</td>
+                          <td className="py-3 pr-4">{formatCurrency(row.monthlySales)}</td>
+                          <td className="py-3 pr-4">{formatCurrency(row.projectReward)}</td>
+                          <td className="py-3 pr-4">{formatCurrency(row.personalExpense)}</td>
+                          <td className="py-3 font-semibold text-slate-900">
+                            {formatCurrency(row.finalSalary)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <EmptyState
+                  title="年別データがまだありません"
+                  description="売上入力が増えると、ここに年別の推移が表示されます。"
+                />
+              )}
+            </div>
+
+            <div className="mt-6">
+              <p className="mb-3 text-sm font-semibold text-slate-900">月別履歴</p>
+              {selectedMemberHistory.monthlyRows.length ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="text-slate-500">
+                      <tr>
+                        <th className="pb-3 pr-4">月</th>
+                        <th className="pb-3 pr-4">案件数</th>
+                        <th className="pb-3 pr-4">売上</th>
+                        <th className="pb-3 pr-4">案件報酬</th>
+                        <th className="pb-3 pr-4">直紹介報酬</th>
+                        <th className="pb-3 pr-4">役員報酬</th>
+                        <th className="pb-3 pr-4">調整額</th>
+                        <th className="pb-3 pr-4">個人経費</th>
+                        <th className="pb-3">最終給料</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedMemberHistory.monthlyRows.map((row) => (
+                        <tr key={row.month} className="border-t border-slate-100">
+                          <td className="py-3 pr-4 font-medium text-slate-900">{row.month}</td>
+                          <td className="py-3 pr-4">{row.dealCount}</td>
+                          <td className="py-3 pr-4">{formatCurrency(row.monthlySales)}</td>
+                          <td className="py-3 pr-4">{formatCurrency(row.projectReward)}</td>
+                          <td className="py-3 pr-4">{formatCurrency(row.referralReward)}</td>
+                          <td className="py-3 pr-4">{formatCurrency(row.executiveReward)}</td>
+                          <td className="py-3 pr-4">{formatCurrency(row.adjustment)}</td>
+                          <td className="py-3 pr-4">{formatCurrency(row.personalExpense)}</td>
+                          <td className="py-3 font-semibold text-slate-900">
+                            {formatCurrency(row.finalSalary)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <EmptyState
+                  title="月別履歴がまだありません"
+                  description="売上入力が増えると、ここに月別の履歴が表示されます。"
+                />
+              )}
+            </div>
+          </>
+        ) : null}
       </OverlayPanel>
     </>
   );
