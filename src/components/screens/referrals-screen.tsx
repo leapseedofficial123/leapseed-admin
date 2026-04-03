@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { EmptyState, Input, Label, PageSection, Select } from "@/components/ui";
+import {
+  EmptyState,
+  Input,
+  Label,
+  OverlayPanel,
+  PageSection,
+  Select,
+} from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
 import { formatMonthLabel, formatPercent, parseNumberInput, toInputString } from "@/lib/format";
 import { createId } from "@/lib/ids";
@@ -28,11 +35,40 @@ function createEmptyReferralForm(): ReferralFormState {
 export function ReferralsScreen() {
   const { store, saveReferralRelationship, deleteReferralRelationship } = useAppState();
   const [form, setForm] = useState<ReferralFormState>(createEmptyReferralForm);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [error, setError] = useState("");
 
   const resetForm = () => {
     setForm(createEmptyReferralForm());
     setError("");
+  };
+
+  const closePanel = () => {
+    setIsPanelOpen(false);
+    resetForm();
+  };
+
+  const openCreatePanel = () => {
+    resetForm();
+    setIsPanelOpen(true);
+  };
+
+  const openEditPanel = (relationshipId: string) => {
+    const relationship = store.referralRelationships.find((item) => item.id === relationshipId);
+    if (!relationship) {
+      return;
+    }
+
+    setForm({
+      id: relationship.id,
+      introducerMemberId: relationship.introducerMemberId,
+      referredMemberId: relationship.referredMemberId,
+      referralRate: toInputString(relationship.referralRate),
+      startMonth: relationship.startMonth,
+      endMonth: relationship.endMonth ?? "",
+    });
+    setError("");
+    setIsPanelOpen(true);
   };
 
   const handleSubmit = () => {
@@ -47,7 +83,7 @@ export function ReferralsScreen() {
     }
 
     if (!form.startMonth) {
-      setError("有効開始月を入れてください。");
+      setError("有効開始月を入力してください。");
       return;
     }
 
@@ -59,14 +95,87 @@ export function ReferralsScreen() {
       startMonth: form.startMonth,
       endMonth: form.endMonth || undefined,
     });
-    resetForm();
+
+    closePanel();
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+    <>
       <PageSection
-        title="紹介関係登録"
-        description="紹介報酬率と有効期間を月単位で管理します。"
+        title="紹介関係一覧"
+        description="一覧から編集を開く形にしています。追加するときだけ登録フォームを表示します。"
+        action={
+          <button
+            type="button"
+            onClick={openCreatePanel}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800"
+          >
+            紹介関係追加
+          </button>
+        }
+      >
+        {store.referralRelationships.length ? (
+          <div className="space-y-3">
+            {store.referralRelationships.map((relationship) => {
+              const introducer = store.members.find(
+                (member) => member.id === relationship.introducerMemberId,
+              );
+              const referred = store.members.find(
+                (member) => member.id === relationship.referredMemberId,
+              );
+
+              return (
+                <div
+                  key={relationship.id}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-lg font-semibold text-slate-900">
+                        {introducer?.name ?? "不明"} → {referred?.name ?? "不明"}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-500">
+                        報酬率 {formatPercent(relationship.referralRate)} / 開始{" "}
+                        {formatMonthLabel(relationship.startMonth)}
+                        {relationship.endMonth
+                          ? ` / 終了 ${formatMonthLabel(relationship.endMonth)}`
+                          : " / 終了未設定"}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditPanel(relationship.id)}
+                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                      >
+                        編集
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteReferralRelationship(relationship.id)}
+                        className="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState
+            title="紹介関係がまだありません"
+            description="紹介関係追加から登録すると、ここに一覧表示されます。"
+          />
+        )}
+      </PageSection>
+
+      <OverlayPanel
+        open={isPanelOpen}
+        title={form.id ? "紹介関係編集" : "紹介関係登録"}
+        description="紹介報酬率と有効期間を月単位で設定できます。"
+        onClose={closePanel}
       >
         <div className="grid gap-4 md:grid-cols-2">
           <div>
@@ -148,7 +257,7 @@ export function ReferralsScreen() {
         </div>
 
         {error ? (
-          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
           </div>
         ) : null}
@@ -157,89 +266,19 @@ export function ReferralsScreen() {
           <button
             type="button"
             onClick={handleSubmit}
-            className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+            className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm text-white transition hover:bg-slate-800"
           >
             {form.id ? "紹介関係更新" : "紹介関係追加"}
           </button>
           <button
             type="button"
-            onClick={resetForm}
-            className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-900"
+            onClick={closePanel}
+            className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm text-slate-700 transition hover:bg-slate-100"
           >
-            入力をクリア
+            キャンセル
           </button>
         </div>
-      </PageSection>
-
-      <PageSection
-        title="紹介関係一覧"
-        description="有効期間に入っているものだけが月次集計で反映されます。"
-      >
-        {store.referralRelationships.length ? (
-          <div className="space-y-3">
-            {store.referralRelationships.map((relationship) => {
-              const introducer = store.members.find(
-                (member) => member.id === relationship.introducerMemberId,
-              );
-              const referred = store.members.find(
-                (member) => member.id === relationship.referredMemberId,
-              );
-
-              return (
-                <div
-                  key={relationship.id}
-                  className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-lg font-semibold text-slate-900">
-                        {introducer?.name ?? "不明"} → {referred?.name ?? "不明"}
-                      </p>
-                      <p className="mt-2 text-sm text-slate-500">
-                        報酬率 {formatPercent(relationship.referralRate)} / 開始{" "}
-                        {formatMonthLabel(relationship.startMonth)}
-                        {relationship.endMonth
-                          ? ` / 終了 ${formatMonthLabel(relationship.endMonth)}`
-                          : " / 終了未設定"}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setForm({
-                            id: relationship.id,
-                            introducerMemberId: relationship.introducerMemberId,
-                            referredMemberId: relationship.referredMemberId,
-                            referralRate: toInputString(relationship.referralRate),
-                            startMonth: relationship.startMonth,
-                            endMonth: relationship.endMonth ?? "",
-                          })
-                        }
-                        className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
-                      >
-                        編集
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteReferralRelationship(relationship.id)}
-                        className="rounded-full border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700"
-                      >
-                        削除
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <EmptyState
-            title="紹介関係がまだありません"
-            description="紹介者・被紹介者・率・有効期間を登録すると直紹介報酬に反映されます。"
-          />
-        )}
-      </PageSection>
-    </div>
+      </OverlayPanel>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import {
   EmptyState,
   Input,
   Label,
+  OverlayPanel,
   PageSection,
   Select,
   Textarea,
@@ -83,15 +84,14 @@ function createEmptyDealForm(targetMonth: string): DealFormState {
 export function DealsScreen() {
   const { store, selectedMonth, saveDealWithParticipants, deleteDeal } = useAppState();
   const [form, setForm] = useState<DealFormState>(() => createEmptyDealForm(selectedMonth));
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [error, setError] = useState("");
 
   const activeCompensationTypes = store.compensationTypes.filter((type) => type.active);
   const selectedProduct = store.products.find((product) => product.id === form.productId);
   const duplicateMemberIds = form.participants
     .map((participant) => participant.memberId)
-    .filter(
-      (memberId, index, list) => memberId && list.indexOf(memberId) !== index,
-    );
+    .filter((memberId, index, list) => memberId && list.indexOf(memberId) !== index);
 
   const recalculateCompanyShare = (
     productId: string,
@@ -114,6 +114,48 @@ export function DealsScreen() {
   const resetForm = () => {
     setForm(createEmptyDealForm(selectedMonth));
     setError("");
+  };
+
+  const closePanel = () => {
+    setIsPanelOpen(false);
+    resetForm();
+  };
+
+  const openCreatePanel = () => {
+    resetForm();
+    setIsPanelOpen(true);
+  };
+
+  const openEditPanel = (dealId: string) => {
+    const deal = store.deals.find((item) => item.id === dealId);
+    if (!deal) {
+      return;
+    }
+
+    const participants = store.dealParticipants.filter(
+      (participant) => participant.dealId === deal.id,
+    );
+
+    setForm({
+      id: deal.id,
+      targetMonth: deal.targetMonth,
+      closedOn: deal.closedOn,
+      productId: deal.productId,
+      salePrice: toInputString(deal.salePrice),
+      companyShare: toInputString(deal.companyShare),
+      companyShareMode: deal.companyShareMode,
+      countForCompanyRevenue: deal.countForCompanyRevenue,
+      pattern: deal.pattern,
+      note: deal.note,
+      participants: participants.map((participant) => ({
+        id: participant.id,
+        memberId: participant.memberId,
+        compensationTypeId: participant.compensationTypeId,
+        note: participant.note,
+      })),
+    });
+    setError("");
+    setIsPanelOpen(true);
   };
 
   const handleProductChange = (productId: string) => {
@@ -163,7 +205,7 @@ export function DealsScreen() {
     }
 
     if (duplicateMemberIds.length) {
-      setError("同じメンバーが参加者に重複しています。修正してから保存してください。");
+      setError("同じメンバーが参加者に重複しています。");
       return;
     }
 
@@ -172,7 +214,7 @@ export function DealsScreen() {
         (participant) => !participant.memberId || !participant.compensationTypeId,
       )
     ) {
-      setError("参加者ごとにメンバーと報酬適用区分を選んでください。");
+      setError("参加者ごとにメンバーと報酬適用区分を選択してください。");
       return;
     }
 
@@ -189,14 +231,111 @@ export function DealsScreen() {
       note: form.note.trim(),
       participants: form.participants,
     });
-    resetForm();
+
+    closePanel();
   };
 
   return (
-    <div className="space-y-6">
+    <>
       <PageSection
-        title="案件入力"
-        description="最重要画面です。案件単位で入力し、参加者をぶら下げる構造にしています。"
+        title="案件一覧"
+        description="一覧から編集を開く形にしています。追加するときだけ案件入力フォームを表示します。"
+        action={
+          <button
+            type="button"
+            onClick={openCreatePanel}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800"
+          >
+            案件追加
+          </button>
+        }
+      >
+        {store.deals.length ? (
+          <div className="space-y-3">
+            {[...store.deals]
+              .sort((left, right) => right.closedOn.localeCompare(left.closedOn))
+              .map((deal) => {
+                const product = store.products.find((item) => item.id === deal.productId);
+                const participants = store.dealParticipants.filter(
+                  (participant) => participant.dealId === deal.id,
+                );
+
+                return (
+                  <div
+                    key={deal.id}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4"
+                  >
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-lg font-semibold text-slate-900">
+                            {product?.name ?? "未設定商品"}
+                          </p>
+                          <Badge>{deal.pattern}</Badge>
+                          {deal.countForCompanyRevenue ? (
+                            <Badge tone="teal">会社売上に計上</Badge>
+                          ) : (
+                            <Badge tone="rose">会社売上に計上しない</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-slate-500">
+                          {formatDateLabel(deal.closedOn)} / 対象月 {deal.targetMonth}
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          売価 {formatCurrency(deal.salePrice)} / 会社取り分{" "}
+                          {formatCurrency(deal.companyShare)}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {participants.map((participant) => {
+                            const member = store.members.find(
+                              (item) => item.id === participant.memberId,
+                            );
+
+                            return (
+                              <Badge key={participant.id}>
+                                {member?.name ?? "不明"} / {participant.compensationTypeId}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                        {deal.note ? (
+                          <p className="text-sm leading-6 text-slate-600">{deal.note}</p>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditPanel(deal.id)}
+                          className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                        >
+                          編集
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteDeal(deal.id)}
+                          className="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        ) : (
+          <EmptyState
+            title="案件がまだありません"
+            description="案件追加から登録すると、ここに一覧表示されます。"
+          />
+        )}
+      </PageSection>
+
+      <OverlayPanel
+        open={isPanelOpen}
+        title={form.id ? "案件編集" : "案件入力"}
+        description="案件単位で入力し、参加者をぶら下げる形で管理します。"
+        onClose={closePanel}
       >
         <div className="grid gap-4 xl:grid-cols-[repeat(4,minmax(0,1fr))]">
           <div>
@@ -325,12 +464,12 @@ export function DealsScreen() {
           </div>
         </div>
 
-        <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-semibold text-slate-900">参加者</p>
               <p className="text-sm text-slate-500">
-                同じ案件でも会社売上は1回のみ計上します。参加者は何人でも追加できます。
+                同じ案件でも会社売上は1回だけ計上します。
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -342,7 +481,7 @@ export function DealsScreen() {
                     participants: [...current.participants, createParticipant()],
                   }))
                 }
-                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
               >
                 参加者追加
               </button>
@@ -354,7 +493,7 @@ export function DealsScreen() {
                     participants: createPatternParticipants(current.pattern),
                   }))
                 }
-                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
               >
                 パターン初期化
               </button>
@@ -365,7 +504,7 @@ export function DealsScreen() {
             {form.participants.map((participant, index) => (
               <div
                 key={participant.id ?? `new_${index}`}
-                className="grid gap-3 rounded-3xl border border-white bg-white p-4 md:grid-cols-[1fr_1fr_1fr_auto]"
+                className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-[1fr_1fr_1fr_auto]"
               >
                 <div>
                   <Label>メンバー</Label>
@@ -446,7 +585,7 @@ export function DealsScreen() {
                         ),
                       }))
                     }
-                    className="w-full rounded-2xl border border-rose-200 px-4 py-3 text-sm font-medium text-rose-700"
+                    className="w-full rounded-lg border border-rose-200 px-4 py-2.5 text-sm text-rose-700 transition hover:bg-rose-50"
                   >
                     削除
                   </button>
@@ -457,7 +596,7 @@ export function DealsScreen() {
         </div>
 
         {selectedProduct ? (
-          <div className="mt-4 rounded-2xl border border-teal-100 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
             商品設定: {selectedProduct.name} / 売価入力 {selectedProduct.saleInputMode} / 取り分方式{" "}
             {selectedProduct.companyShareMethod}
             {form.companyShareMode === "auto"
@@ -467,13 +606,13 @@ export function DealsScreen() {
         ) : null}
 
         {duplicateMemberIds.length ? (
-          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             同じメンバーが複数回選ばれています。重複登録の可能性があるので確認してください。
           </div>
         ) : null}
 
         {error ? (
-          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
           </div>
         ) : null}
@@ -482,122 +621,19 @@ export function DealsScreen() {
           <button
             type="button"
             onClick={handleSubmit}
-            className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+            className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm text-white transition hover:bg-slate-800"
           >
             {form.id ? "案件更新" : "案件追加"}
           </button>
           <button
             type="button"
-            onClick={resetForm}
-            className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-900"
+            onClick={closePanel}
+            className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm text-slate-700 transition hover:bg-slate-100"
           >
-            入力をクリア
+            キャンセル
           </button>
         </div>
-      </PageSection>
-
-      <PageSection
-        title="案件一覧"
-        description="成約日が新しい順です。編集するとフォームに読み込みます。"
-      >
-        {store.deals.length ? (
-          <div className="space-y-3">
-            {[...store.deals]
-              .sort((left, right) => right.closedOn.localeCompare(left.closedOn))
-              .map((deal) => {
-                const product = store.products.find((item) => item.id === deal.productId);
-                const participants = store.dealParticipants.filter(
-                  (participant) => participant.dealId === deal.id,
-                );
-
-                return (
-                  <div
-                    key={deal.id}
-                    className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4"
-                  >
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-lg font-semibold text-slate-900">
-                            {product?.name ?? "未設定商品"}
-                          </p>
-                          <Badge tone="slate">{deal.pattern}</Badge>
-                          {deal.countForCompanyRevenue ? (
-                            <Badge tone="teal">会社売上に計上</Badge>
-                          ) : (
-                            <Badge tone="rose">会社売上に計上しない</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-slate-500">
-                          {formatDateLabel(deal.closedOn)} / 対象月 {deal.targetMonth}
-                        </p>
-                        <p className="text-sm text-slate-600">
-                          売価 {formatCurrency(deal.salePrice)} / 会社取り分{" "}
-                          {formatCurrency(deal.companyShare)}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {participants.map((participant) => {
-                            const member = store.members.find(
-                              (item) => item.id === participant.memberId,
-                            );
-                            return (
-                              <Badge key={participant.id}>
-                                {member?.name ?? "不明"} / {participant.compensationTypeId}
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                        {deal.note ? (
-                          <p className="text-sm leading-6 text-slate-600">{deal.note}</p>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm({
-                              id: deal.id,
-                              targetMonth: deal.targetMonth,
-                              closedOn: deal.closedOn,
-                              productId: deal.productId,
-                              salePrice: toInputString(deal.salePrice),
-                              companyShare: toInputString(deal.companyShare),
-                              companyShareMode: deal.companyShareMode,
-                              countForCompanyRevenue: deal.countForCompanyRevenue,
-                              pattern: deal.pattern,
-                              note: deal.note,
-                              participants: participants.map((participant) => ({
-                                id: participant.id,
-                                memberId: participant.memberId,
-                                compensationTypeId: participant.compensationTypeId,
-                                note: participant.note,
-                              })),
-                            })
-                          }
-                          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
-                        >
-                          編集
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteDeal(deal.id)}
-                          className="rounded-full border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700"
-                        >
-                          削除
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        ) : (
-          <EmptyState
-            title="案件がまだありません"
-            description="ここから案件を追加すると、月次集計と会社集計に反映されます。"
-          />
-        )}
-      </PageSection>
-    </div>
+      </OverlayPanel>
+    </>
   );
 }
