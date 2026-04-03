@@ -10,6 +10,20 @@ import type {
   ReferralRelationship,
 } from "@/types/app";
 
+export interface PeriodOverview {
+  months: string[];
+  totalSales: number;
+  totalCompanyShare: number;
+  totalSalary: number;
+  totalProjectReward: number;
+  totalReferralReward: number;
+  totalExecutiveReward: number;
+  totalAdjustments: number;
+  totalPersonalExpenses: number;
+  expenses: number;
+  profit: number;
+}
+
 function roundMoney(value: number): number {
   return Math.round(value || 0);
 }
@@ -475,4 +489,35 @@ export function buildCompanyTrend(store: AppDataStore): CompanyTrendPoint[] {
       };
     })
     .sort((left, right) => left.month.localeCompare(right.month));
+}
+
+export function buildPeriodOverview(store: AppDataStore, months: string[]): PeriodOverview {
+  const uniqueMonths = [...new Set(months)].sort((left, right) => left.localeCompare(right));
+  const snapshots = uniqueMonths.map((month) => buildMonthlyPayroll(store, month));
+
+  return {
+    months: uniqueMonths,
+    totalSales: roundMoney(snapshots.reduce((sum, snapshot) => sum + snapshot.totalSales, 0)),
+    totalCompanyShare: roundMoney(
+      snapshots.reduce((sum, snapshot) => sum + snapshot.totalCompanyShare, 0),
+    ),
+    totalSalary: roundMoney(snapshots.reduce((sum, snapshot) => sum + snapshot.totalSalary, 0)),
+    totalProjectReward: roundMoney(
+      snapshots.reduce((sum, snapshot) => sum + snapshot.totalProjectReward, 0),
+    ),
+    totalReferralReward: roundMoney(
+      snapshots.reduce((sum, snapshot) => sum + snapshot.totalReferralReward, 0),
+    ),
+    totalExecutiveReward: roundMoney(
+      snapshots.reduce((sum, snapshot) => sum + snapshot.totalExecutiveReward, 0),
+    ),
+    totalAdjustments: roundMoney(
+      snapshots.reduce((sum, snapshot) => sum + snapshot.totalAdjustments, 0),
+    ),
+    totalPersonalExpenses: roundMoney(
+      snapshots.reduce((sum, snapshot) => sum + snapshot.totalPersonalExpenses, 0),
+    ),
+    expenses: roundMoney(snapshots.reduce((sum, snapshot) => sum + snapshot.expenses, 0)),
+    profit: roundMoney(snapshots.reduce((sum, snapshot) => sum + snapshot.profit, 0)),
+  };
 }

@@ -3,43 +3,78 @@
 import Link from "next/link";
 import { Badge, EmptyState, PageSection, StatCard } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
+import { getRangeLabel } from "@/lib/date";
+import { buildPeriodOverview } from "@/lib/domain/payroll";
+import { buildMonthlyStatements } from "@/lib/domain/statements";
 import { formatCurrency, formatMonthLabel, formatNumber } from "@/lib/format";
 
 export function DashboardScreen() {
-  const { currentSnapshot, selectedMonth, companyTrend } = useAppState();
+  const {
+    store,
+    currentSnapshot,
+    selectedMonth,
+    analysisMonths,
+    analysisRangeMode,
+    companyTrend,
+  } = useAppState();
+  const periodMonths = analysisMonths.length ? analysisMonths : [selectedMonth];
+  const periodOverview = buildPeriodOverview(store, periodMonths);
+  const statements = buildMonthlyStatements(store, selectedMonth);
   const salaryRanking = [...currentSnapshot.memberSummaries]
     .filter((summary) => summary.finalSalary !== 0)
     .sort((left, right) => right.finalSalary - left.finalSalary);
   const productRanking = [...currentSnapshot.productSummaries];
-  const recentTrend = [...companyTrend].sort((left, right) => right.month.localeCompare(left.month)).slice(0, 6);
+  const recentTrend = [...companyTrend]
+    .sort((left, right) => right.month.localeCompare(left.month))
+    .slice(0, 6);
 
   return (
     <div className="space-y-6">
+      <PageSection
+        title="現在の表示範囲"
+        description="左メニューの対象月と表示期間を切り替えると、ダッシュボードと分析の見え方が連動します。"
+      >
+        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+          <Badge tone="teal">対象月 {formatMonthLabel(selectedMonth)}</Badge>
+          <Badge>
+            {analysisRangeMode === "month"
+              ? "単月"
+              : analysisRangeMode === "quarter"
+                ? "3か月"
+                : "年間"}
+          </Badge>
+          <span>{getRangeLabel(selectedMonth, analysisRangeMode)}</span>
+        </div>
+      </PageSection>
+
       <div className="grid gap-4 lg:grid-cols-4">
         <StatCard
-          label={`${formatMonthLabel(selectedMonth)}の会社売上`}
-          value={formatCurrency(currentSnapshot.totalSales)}
-          caption="会社売上に計上する案件のみ"
+          label="会社売上"
+          value={formatCurrency(periodOverview.totalSales)}
+          caption={`${periodOverview.months.length}か月分を集計`}
         />
         <StatCard
           label="会社取り分"
-          value={formatCurrency(currentSnapshot.totalCompanyShare)}
+          value={formatCurrency(periodOverview.totalCompanyShare)}
           caption="報酬計算のベース"
         />
         <StatCard
           label="全体給料合計"
-          value={formatCurrency(currentSnapshot.totalSalary)}
-          caption="案件報酬・紹介報酬・役員報酬・調整額を反映"
+          value={formatCurrency(periodOverview.totalSalary)}
+          caption="案件報酬・紹介報酬・役員報酬・調整額込み"
         />
         <StatCard
-          label="今月の利益"
-          value={formatCurrency(currentSnapshot.profit)}
+          label="利益"
+          value={formatCurrency(periodOverview.profit)}
           caption="会社取り分 - 全体給料 - 会社経費"
         />
       </div>
 
       {currentSnapshot.warnings.length ? (
-        <PageSection title="確認メモ" description="入力不足や計算上の注意点がある場合に表示します。">
+        <PageSection
+          title="確認メモ"
+          description="入力不足や計算上の注意点がある場合に表示します。"
+        >
           <div className="space-y-2">
             {currentSnapshot.warnings.map((warning) => (
               <div
@@ -55,29 +90,29 @@ export function DashboardScreen() {
 
       <PageSection
         title="よく使う画面"
-        description="毎月の入力と確認で使う画面をここからすぐ開けます。"
+        description="毎月の運用で頻繁に使う画面を上にまとめています。"
       >
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {[
             {
               href: "/deals",
               title: "売上入力",
-              description: "誰が成約したか、どの商品か、案件形態は何かを入力",
+              description: "成約した案件を1件ずつ登録します。月末にまとめて入力しても大丈夫です。",
+            },
+            {
+              href: "/statements",
+              title: "給与明細",
+              description: "今月の明細を一覧で確認し、PDF保存や明細CSV出力ができます。",
             },
             {
               href: "/monthly",
               title: "月次集計",
-              description: "メンバー別の給料、個人経費、給与明細CSVを確認",
+              description: "役員報酬、調整額、個人経費を含めて最終給料を確認します。",
             },
             {
               href: "/company",
-              title: "会社分析",
-              description: "月ごとの売上・利益・案件台帳を分析してCSV出力",
-            },
-            {
-              href: "/rates",
-              title: "計算設定",
-              description: "報酬率や計算ロジックのベース設定を管理",
+              title: "分析",
+              description: "月別・3か月・年間で売上や利益を見える化し、CSV出力できます。",
             },
           ].map((item) => (
             <Link
@@ -90,6 +125,54 @@ export function DashboardScreen() {
             </Link>
           ))}
         </div>
+      </PageSection>
+
+      <PageSection
+        title="今月の給与明細"
+        description="売上入力や月次調整を更新すると、自動でここに今月の明細対象メンバーが並びます。"
+        action={
+          <Link
+            href="/statements"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+          >
+            給与明細一覧へ
+          </Link>
+        }
+      >
+        {statements.length ? (
+          <div className="space-y-3">
+            {statements.map((statement) => (
+              <div
+                key={statement.memberId}
+                className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-slate-900">{statement.memberName}</p>
+                    <Badge tone="teal">{formatMonthLabel(statement.month)}</Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-500">
+                    個人売上 {formatCurrency(statement.monthlySales)} / 最終給料{" "}
+                    {formatCurrency(statement.finalSalary)}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href="/statements"
+                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                  >
+                    明細を開く
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="今月の給与明細対象はまだありません"
+            description="売上入力や月次調整を入れると、自動で給与明細の候補が作られます。"
+          />
+        )}
       </PageSection>
 
       <PageSection
@@ -113,7 +196,9 @@ export function DashboardScreen() {
                   <div className="grid gap-3 sm:grid-cols-4">
                     <div>
                       <p className="text-xs text-slate-500">売上</p>
-                      <p className="font-semibold text-slate-900">{formatCurrency(point.totalSales)}</p>
+                      <p className="font-semibold text-slate-900">
+                        {formatCurrency(point.totalSales)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500">会社取り分</p>
@@ -123,11 +208,15 @@ export function DashboardScreen() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-500">全体給料</p>
-                      <p className="font-semibold text-slate-900">{formatCurrency(point.totalSalary)}</p>
+                      <p className="font-semibold text-slate-900">
+                        {formatCurrency(point.totalSalary)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500">利益</p>
-                      <p className="font-semibold text-slate-900">{formatCurrency(point.profit)}</p>
+                      <p className="font-semibold text-slate-900">
+                        {formatCurrency(point.profit)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -143,10 +232,7 @@ export function DashboardScreen() {
       </PageSection>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <PageSection
-          title="メンバー別ランキング"
-          description="今月の最終給料順です。"
-        >
+        <PageSection title="メンバー別ランキング" description="今月の最終給料順です。">
           {salaryRanking.length ? (
             <div className="space-y-2">
               {salaryRanking.map((summary, index) => (
@@ -184,10 +270,7 @@ export function DashboardScreen() {
           )}
         </PageSection>
 
-        <PageSection
-          title="商品別ランキング"
-          description="今月の売上上位商品です。"
-        >
+        <PageSection title="商品別ランキング" description="今月の売上上位商品です。">
           {productRanking.length ? (
             <div className="space-y-2">
               {productRanking.map((product, index) => (
@@ -228,10 +311,7 @@ export function DashboardScreen() {
         </PageSection>
       </div>
 
-      <PageSection
-        title="今月の集計メモ"
-        description="今月の報酬内訳をまとめています。"
-      >
+      <PageSection title="今月の集計メモ" description="今月の報酬内訳をまとめています。">
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-500">案件報酬合計</p>

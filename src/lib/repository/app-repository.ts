@@ -61,6 +61,8 @@ function normalizeStore(raw: unknown): AppDataStore {
     preferences: {
       displayMonth:
         candidate.preferences?.displayMonth || fallback.preferences.displayMonth,
+      analysisRangeMode:
+        candidate.preferences?.analysisRangeMode || fallback.preferences.analysisRangeMode,
     },
   };
 }

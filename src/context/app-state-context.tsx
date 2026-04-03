@@ -7,10 +7,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { getRangeMonths, sortMonths } from "@/lib/date";
 import { buildCompanyTrend, buildMonthlyPayroll, getTrackedMonths } from "@/lib/domain/payroll";
 import { createId } from "@/lib/ids";
 import { createBrowserRepository } from "@/lib/repository/app-repository";
 import type {
+  AnalysisRangeMode,
   AppDataStore,
   CompensationBand,
   CompensationType,
@@ -37,10 +39,13 @@ interface DealDraft extends Omit<Deal, "id"> {
 interface AppStateContextValue {
   store: AppDataStore;
   selectedMonth: string;
+  analysisRangeMode: AnalysisRangeMode;
   trackedMonths: string[];
+  analysisMonths: string[];
   currentSnapshot: MonthlyPayrollSnapshot;
   companyTrend: ReturnType<typeof buildCompanyTrend>;
   setSelectedMonth: (month: string) => void;
+  setAnalysisRangeMode: (mode: AnalysisRangeMode) => void;
   saveMember: (member: Member) => void;
   deleteMember: (memberId: string) => void;
   saveProduct: (product: Product) => void;
@@ -107,11 +112,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const currentSnapshot = buildMonthlyPayroll(store, selectedMonth);
   const companyTrend = buildCompanyTrend(store);
   const trackedMonths = getTrackedMonths(store);
+  const analysisRangeMode = store.preferences.analysisRangeMode;
+  const analysisMonths = sortMonths(
+    getRangeMonths(selectedMonth, analysisRangeMode).filter((month) =>
+      trackedMonths.includes(month),
+    ),
+  );
 
   const value: AppStateContextValue = {
     store,
     selectedMonth,
+    analysisRangeMode,
     trackedMonths,
+    analysisMonths,
     currentSnapshot,
     companyTrend,
     setSelectedMonth(month) {
@@ -124,6 +137,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           },
         }),
       );
+    },
+    setAnalysisRangeMode(mode) {
+      setStore((current) => ({
+        ...current,
+        preferences: {
+          ...current.preferences,
+          analysisRangeMode: mode,
+        },
+      }));
     },
     saveMember(member) {
       setStore((current) => ({

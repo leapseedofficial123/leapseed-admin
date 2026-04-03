@@ -98,8 +98,11 @@ export interface MemberExpense {
   note: string;
 }
 
+export type AnalysisRangeMode = "month" | "quarter" | "year";
+
 export interface AppPreferences {
   displayMonth: string;
+  analysisRangeMode: AnalysisRangeMode;
 }
 
 export interface AppDataStore {

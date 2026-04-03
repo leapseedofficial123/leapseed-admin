@@ -29,6 +29,7 @@ export function createBlankAppDataStore(
     memberExpenses: [],
     preferences: {
       displayMonth,
+      analysisRangeMode: "month",
     },
   };
 }

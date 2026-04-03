@@ -321,6 +321,7 @@ export function createSampleAppDataStore(): AppDataStore {
     ],
     preferences: {
       displayMonth: "2026-03",
+      analysisRangeMode: "month",
     },
   };
 }
