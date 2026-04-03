@@ -4,9 +4,9 @@ import type { ChangeEvent, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef } from "react";
+import { useAppState } from "@/context/app-state-context";
 import { APP_TITLE } from "@/lib/constants";
 import { formatMonthLabel } from "@/lib/format";
-import { useAppState } from "@/context/app-state-context";
 
 const navigationItems = [
   { href: "/", label: "ダッシュボード" },
@@ -49,24 +49,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(17,94,89,0.08),_transparent_35%),linear-gradient(180deg,#f7faf9_0%,#f4efe6_100%)] text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col px-4 py-4 sm:px-6 lg:px-8">
-        <header className="sticky top-0 z-30 mb-6 rounded-[28px] border border-white/70 bg-white/85 px-5 py-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="mx-auto flex min-h-screen max-w-[1440px] flex-col px-4 py-4 sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-30 mb-6 border-b border-slate-200 bg-slate-50/95 pb-4 backdrop-blur">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.32em] text-teal-700">
+              <p className="text-xs font-medium uppercase tracking-[0.24em] text-slate-500">
                 LeapSeed Payroll
               </p>
-              <div className="flex flex-wrap items-end gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-2xl font-semibold tracking-tight">{APP_TITLE}</h1>
-                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900">
+                <span className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600">
                   表示月: {formatMonthLabel(selectedMonth)}
                 </span>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
                 <span className="text-slate-500">対象月</span>
                 <select
                   value={selectedMonth}
@@ -84,28 +84,28 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={handleExport}
-                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium transition hover:border-teal-500 hover:text-teal-700"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
               >
                 JSON出力
               </button>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium transition hover:border-teal-500 hover:text-teal-700"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
               >
                 JSON取込
               </button>
               <button
                 type="button"
                 onClick={() => resetData("sample")}
-                className="rounded-full bg-teal-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-800"
+                className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white transition hover:bg-slate-800"
               >
                 サンプル読込
               </button>
               <button
                 type="button"
                 onClick={() => resetData("blank")}
-                className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
               >
                 空データ化
               </button>
@@ -128,10 +128,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                    className={`rounded-lg px-3 py-2 text-sm transition ${
                       active
-                        ? "bg-slate-900 text-white shadow-lg"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        ? "bg-slate-900 text-white"
+                        : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
                     }`}
                   >
                     {item.label}

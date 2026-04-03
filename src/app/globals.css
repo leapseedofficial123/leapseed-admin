@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7faf9;
+  --background: #f8fafc;
   --foreground: #0f172a;
   --font-sans: "Noto Sans JP", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
@@ -36,7 +36,7 @@ textarea {
 }
 
 ::selection {
-  background: rgba(13, 148, 136, 0.18);
+  background: rgba(148, 163, 184, 0.28);
 }
 
 details > summary {

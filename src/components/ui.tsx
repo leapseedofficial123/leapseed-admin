@@ -12,7 +12,7 @@ export function PageSection({
   action?: ReactNode;
 }) {
   return (
-    <section className="rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur">
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h2>
@@ -37,10 +37,10 @@ export function StatCard({
   caption?: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-teal-100 bg-gradient-to-br from-teal-950 via-teal-900 to-teal-800 p-5 text-white shadow-lg">
-      <p className="text-sm text-teal-100">{label}</p>
-      <p className="mt-3 text-3xl font-semibold tracking-tight">{value}</p>
-      {caption ? <p className="mt-2 text-xs text-teal-100/90">{caption}</p> : null}
+    <div className="rounded-xl border border-slate-200 bg-white p-5">
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{value}</p>
+      {caption ? <p className="mt-2 text-xs text-slate-500">{caption}</p> : null}
     </div>
   );
 }
@@ -53,7 +53,7 @@ export function EmptyState({
   description: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
+    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
       <p className="text-base font-semibold text-slate-900">{title}</p>
       <p className="mt-2 text-sm text-slate-600">{description}</p>
     </div>
@@ -82,7 +82,7 @@ export function Input({
   return (
     <input
       {...props}
-      className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-4 focus:ring-teal-100 ${className}`}
+      className={`w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 ${className}`}
     />
   );
 }
@@ -94,7 +94,7 @@ export function Textarea({
   return (
     <textarea
       {...props}
-      className={`min-h-24 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-4 focus:ring-teal-100 ${className}`}
+      className={`min-h-24 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 ${className}`}
     />
   );
 }
@@ -107,7 +107,7 @@ export function Select({
   return (
     <select
       {...props}
-      className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100 ${className}`}
+      className={`w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 ${className}`}
     >
       {children}
     </select>
@@ -122,14 +122,16 @@ export function Badge({
   tone?: "slate" | "amber" | "teal" | "rose";
 }) {
   const classes = {
-    slate: "bg-slate-100 text-slate-700",
-    amber: "bg-amber-100 text-amber-800",
-    teal: "bg-teal-100 text-teal-800",
-    rose: "bg-rose-100 text-rose-700",
+    slate: "border-slate-200 bg-slate-100 text-slate-700",
+    amber: "border-amber-200 bg-amber-50 text-amber-800",
+    teal: "border-teal-200 bg-teal-50 text-teal-800",
+    rose: "border-rose-200 bg-rose-50 text-rose-700",
   };
 
   return (
-    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${classes[tone]}`}>
+    <span
+      className={`inline-flex rounded-md border px-2 py-1 text-xs font-medium ${classes[tone]}`}
+    >
       {children}
     </span>
   );
