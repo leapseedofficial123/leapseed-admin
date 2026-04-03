@@ -77,6 +77,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     setAnalysisRangeMode,
   } = useAppState();
 
+  const toggleMenu = () => {
+    setMenuOpen((current) => !current);
+  };
+
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-200 px-5 py-5">
@@ -85,7 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </p>
         <h1 className="mt-2 text-xl font-semibold tracking-tight text-slate-900">{APP_TITLE}</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          毎月の売上入力、給与明細作成、分析確認を左メニューから迷わず進められる構成です。
+          毎月の売上入力、給与明細、分析確認を必要なときだけ開けるメニューです。
         </p>
       </div>
 
@@ -141,54 +145,59 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-[280px] border-r border-slate-200 bg-white lg:block">
-          {sidebar}
-        </aside>
-
-        {menuOpen ? (
-          <div className="fixed inset-0 z-50 lg:hidden">
+      <header className="sticky top-0 z-50 h-16 border-b border-slate-200 bg-slate-50/95 backdrop-blur">
+        <div className="flex h-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              aria-label="メニューを閉じる"
-              onClick={() => setMenuOpen(false)}
-              className="absolute inset-0 bg-slate-900/35"
-            />
-            <aside className="absolute inset-y-0 left-0 w-[84vw] max-w-[320px] border-r border-slate-200 bg-white shadow-2xl">
-              {sidebar}
-            </aside>
-          </div>
-        ) : null}
-
-        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b border-slate-200 bg-slate-50/95 px-4 py-3 backdrop-blur sm:px-6 lg:hidden">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
-                  LeapSeed Payroll
-                </p>
-                <p className="mt-1 font-semibold text-slate-900">{APP_TITLE}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMenuOpen(true)}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="space-y-1">
-                    <span className="block h-0.5 w-4 bg-current" />
-                    <span className="block h-0.5 w-4 bg-current" />
-                    <span className="block h-0.5 w-4 bg-current" />
-                  </span>
-                  メニュー
+              aria-label={menuOpen ? "メニューを閉じる" : "メニューを開く"}
+              onClick={toggleMenu}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+            >
+              <span className="flex items-center gap-2">
+                <span className="space-y-1">
+                  <span className="block h-0.5 w-4 bg-current" />
+                  <span className="block h-0.5 w-4 bg-current" />
+                  <span className="block h-0.5 w-4 bg-current" />
                 </span>
-              </button>
-            </div>
-          </header>
+                {menuOpen ? "閉じる" : "メニュー"}
+              </span>
+            </button>
 
-          <main className="flex-1 px-4 py-4 sm:px-6 lg:px-8 lg:py-6">{children}</main>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
+                LeapSeed Payroll
+              </p>
+              <p className="mt-1 font-semibold text-slate-900">{APP_TITLE}</p>
+            </div>
+          </div>
+
+          <div className="hidden text-right sm:block">
+            <p className="text-xs text-slate-500">表示中</p>
+            <p className="mt-1 text-sm font-medium text-slate-900">
+              {formatMonthLabel(selectedMonth)}
+            </p>
+          </div>
         </div>
-      </div>
+      </header>
+
+      {menuOpen ? (
+        <div className="fixed inset-x-0 bottom-0 top-16 z-40">
+          <button
+            type="button"
+            aria-label="メニューの背景を閉じる"
+            onClick={() => setMenuOpen(false)}
+            className="absolute inset-0 bg-slate-900/35"
+          />
+          <aside className="absolute inset-y-0 left-0 w-[84vw] max-w-[320px] overflow-y-auto border-r border-slate-200 bg-white shadow-2xl">
+            {sidebar}
+          </aside>
+        </div>
+      ) : null}
+
+      <main className="min-h-[calc(100vh-4rem)] px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
+        {children}
+      </main>
     </div>
   );
 }
