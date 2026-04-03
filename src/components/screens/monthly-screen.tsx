@@ -10,6 +10,8 @@ import {
   Select,
 } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
+import { downloadCsv } from "@/lib/csv";
+import { buildMonthlyPayrollCsvRows } from "@/lib/domain/exports";
 import {
   formatCurrency,
   formatDateLabel,
@@ -48,6 +50,7 @@ export function MonthlyScreen() {
   const monthAdjustments = store.salaryAdjustments.filter(
     (adjustment) => adjustment.month === selectedMonth,
   );
+  const payrollCsvRows = buildMonthlyPayrollCsvRows(store, selectedMonth);
 
   const resetForm = () => {
     setForm(createEmptyAdjustmentForm());
@@ -166,6 +169,18 @@ export function MonthlyScreen() {
       <PageSection
         title="月次集計"
         description="各メンバーの個人売上、案件報酬、紹介報酬、役員報酬、調整額、最終給料を確認できます。"
+        action={
+          <button
+            type="button"
+            onClick={() =>
+              downloadCsv(`leapseed-payroll-${selectedMonth}.csv`, payrollCsvRows)
+            }
+            disabled={!payrollCsvRows.length}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            給与サマリーCSV
+          </button>
+        }
       >
         {currentSnapshot.memberSummaries.length ? (
           <div className="space-y-4">
