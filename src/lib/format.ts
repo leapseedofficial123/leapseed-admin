@@ -1,24 +1,38 @@
-const currencyFormatter = new Intl.NumberFormat("ja-JP");
+const numberFormatter = new Intl.NumberFormat("ja-JP");
 const monthFormatter = new Intl.DateTimeFormat("ja-JP", {
   year: "numeric",
   month: "long",
 });
 const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
   year: "numeric",
-  month: "short",
+  month: "numeric",
   day: "numeric",
 });
 
 export function formatCurrency(value: number): string {
-  return `¥${currencyFormatter.format(Math.round(value || 0))}`;
+  return `¥${numberFormatter.format(Math.round(value || 0))}`;
+}
+
+export function formatSignedCurrency(value: number): string {
+  const normalized = Math.round(value || 0);
+  if (normalized > 0) {
+    return `+${formatCurrency(normalized)}`;
+  }
+
+  if (normalized < 0) {
+    return `-${formatCurrency(Math.abs(normalized))}`;
+  }
+
+  return formatCurrency(0);
 }
 
 export function formatNumber(value: number): string {
-  return currencyFormatter.format(Math.round(value || 0));
+  return numberFormatter.format(Math.round(value || 0));
 }
 
 export function formatPercent(value: number): string {
-  return `${(value * 100).toFixed((value * 100) % 1 === 0 ? 0 : 1)}%`;
+  const percent = value * 100;
+  return `${percent.toFixed(percent % 1 === 0 ? 0 : 1)}%`;
 }
 
 export function formatMonthLabel(value: string): string {
@@ -43,7 +57,7 @@ export function parseNumberInput(value: string): number {
     return 0;
   }
 
-  const normalized = value.replace(/,/g, "").trim();
+  const normalized = value.replace(/,/g, "").replace(/[^\d.-]/g, "").trim();
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 }

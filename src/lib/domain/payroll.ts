@@ -32,12 +32,9 @@ function sortBands(bands: CompensationBand[]): CompensationBand[] {
   return [...bands].sort((left, right) => left.minSales - right.minSales);
 }
 
-function getApplicableBand(
-  bands: CompensationBand[],
-  monthlySales: number,
-): CompensationBand {
-  const ordered = sortBands(bands);
-  if (!ordered.length) {
+function getApplicableBand(bands: CompensationBand[], monthlySales: number): CompensationBand {
+  const orderedBands = sortBands(bands);
+  if (!orderedBands.length) {
     return {
       id: "fallback",
       minSales: 0,
@@ -45,15 +42,14 @@ function getApplicableBand(
     };
   }
 
-  let current = ordered[0];
-
-  for (const band of ordered) {
+  let currentBand = orderedBands[0];
+  for (const band of orderedBands) {
     if (monthlySales >= band.minSales) {
-      current = band;
+      currentBand = band;
     }
   }
 
-  return current;
+  return currentBand;
 }
 
 function solveLinearSystem(matrix: number[][], constants: number[]): number[] | null {
@@ -64,10 +60,7 @@ function solveLinearSystem(matrix: number[][], constants: number[]): number[] | 
     let maxRow = pivotIndex;
 
     for (let row = pivotIndex + 1; row < size; row += 1) {
-      if (
-        Math.abs(augmented[row][pivotIndex]) >
-        Math.abs(augmented[maxRow][pivotIndex])
-      ) {
+      if (Math.abs(augmented[row][pivotIndex]) > Math.abs(augmented[maxRow][pivotIndex])) {
         maxRow = row;
       }
     }
@@ -76,10 +69,7 @@ function solveLinearSystem(matrix: number[][], constants: number[]): number[] | 
       return null;
     }
 
-    [augmented[pivotIndex], augmented[maxRow]] = [
-      augmented[maxRow],
-      augmented[pivotIndex],
-    ];
+    [augmented[pivotIndex], augmented[maxRow]] = [augmented[maxRow], augmented[pivotIndex]];
 
     const pivot = augmented[pivotIndex][pivotIndex];
     for (let column = pivotIndex; column <= size; column += 1) {
@@ -121,7 +111,6 @@ function solveByIteration(matrix: number[][], base: number[]): number[] | null {
     );
 
     current = next;
-
     if (delta < 1) {
       return current.map(roundMoney);
     }
@@ -164,17 +153,16 @@ function buildReferralFinalSalaries(
   const baseVector = memberIds.map((memberId) => baseSalaryByMemberId[memberId] ?? 0);
 
   let solved = solveLinearSystem(identityMinusRates, baseVector);
-
   if (!solved) {
     solved = solveByIteration(ratesMatrix, baseVector);
     warnings.push(
-      "紹介報酬に循環参照の可能性があったため、反復計算で最終給料を近似しました。",
+      "紹介関係に循環の可能性があったため、反復計算で最終給料を求めました。",
     );
   }
 
   if (!solved) {
     warnings.push(
-      "紹介報酬の計算が安定しなかったため、紹介報酬を除いた金額で集計しています。",
+      "紹介報酬の計算を安定して解けなかったため、紹介報酬を除いた金額で集計しました。",
     );
     solved = [...baseVector];
   }
@@ -187,15 +175,10 @@ function buildReferralFinalSalaries(
   };
 }
 
-export function buildMonthlyPayroll(
-  store: AppDataStore,
-  month: string,
-): MonthlyPayrollSnapshot {
+export function buildMonthlyPayroll(store: AppDataStore, month: string): MonthlyPayrollSnapshot {
   const warnings: string[] = [];
   const membersById = Object.fromEntries(store.members.map((member) => [member.id, member]));
-  const productsById = Object.fromEntries(
-    store.products.map((product) => [product.id, product]),
-  );
+  const productsById = Object.fromEntries(store.products.map((product) => [product.id, product]));
   const compensationTypesById = Object.fromEntries(
     store.compensationTypes.map((type) => [type.id, type]),
   );
@@ -205,6 +188,7 @@ export function buildMonthlyPayroll(
   const monthParticipants = store.dealParticipants.filter((participant) =>
     monthDealIds.has(participant.dealId),
   );
+
   const monthlySalesByMemberId: Record<string, number> = {};
   const projectRewardByMemberId: Record<string, number> = {};
   const detailByMemberId: Record<string, ParticipantRewardDetail[]> = {};
@@ -226,7 +210,7 @@ export function buildMonthlyPayroll(
     const compensationType = compensationTypesById[participant.compensationTypeId];
 
     if (!deal || !member) {
-      warnings.push(`案件またはメンバーが見つからない参加者があり、集計から除外しました。`);
+      warnings.push("案件参加者の参照が壊れているデータがあり、該当行を計算から外しました。");
       continue;
     }
 
@@ -247,7 +231,7 @@ export function buildMonthlyPayroll(
       compensationTypeLabel: compensationType?.label ?? participant.compensationTypeId,
       dealPattern: deal.pattern,
       productId: deal.productId,
-      productName: product?.name ?? "未設定商品",
+      productName: product?.name ?? "未設定の商品",
       closedOn: deal.closedOn,
       salePrice: deal.salePrice,
       companyShare: deal.companyShare,
@@ -263,14 +247,12 @@ export function buildMonthlyPayroll(
   }
 
   const includedDeals = monthDeals.filter((deal) => deal.countForCompanyRevenue);
-  const totalSales = roundMoney(
-    includedDeals.reduce((sum, deal) => sum + deal.salePrice, 0),
-  );
+  const totalSales = roundMoney(includedDeals.reduce((sum, deal) => sum + deal.salePrice, 0));
   const totalCompanyShare = roundMoney(
     includedDeals.reduce((sum, deal) => sum + deal.companyShare, 0),
   );
-  const executiveRewardByMemberId: Record<string, number> = {};
 
+  const executiveRewardByMemberId: Record<string, number> = {};
   for (const member of store.members) {
     if (!member.isExecutive) {
       continue;
@@ -313,7 +295,6 @@ export function buildMonthlyPayroll(
   const activeReferrals = store.referralRelationships.filter((relationship) =>
     isMonthInRange(month, relationship.startMonth, relationship.endMonth),
   );
-
   const referralSolution = buildReferralFinalSalaries(
     store.members.map((member) => member.id),
     baseSalaryByMemberId,
@@ -337,8 +318,7 @@ export function buildMonthlyPayroll(
     referralDetailsByMemberId[referral.introducerMemberId].push({
       referralId: referral.id,
       referredMemberId: referral.referredMemberId,
-      referredMemberName:
-        membersById[referral.referredMemberId]?.name ?? "不明メンバー",
+      referredMemberName: membersById[referral.referredMemberId]?.name ?? "未設定メンバー",
       rate: referral.referralRate,
       referredFinalSalary,
       reward,
@@ -392,7 +372,7 @@ export function buildMonthlyPayroll(
       if (!accumulator[key]) {
         accumulator[key] = {
           productId: key,
-          productName: product?.name ?? "未設定商品",
+          productName: product?.name ?? "未設定の商品",
           dealCount: 0,
           totalSales: 0,
           totalCompanyShare: 0,
@@ -431,7 +411,8 @@ export function buildMonthlyPayroll(
   const totalSalary = roundMoney(
     memberSummaries.reduce((sum, summary) => sum + summary.finalSalary, 0),
   );
-  const expenses = roundMoney(monthlySetting?.expense ?? 0);
+  const operatingExpense = roundMoney(monthlySetting?.expense ?? 0);
+  const expenses = roundMoney(operatingExpense + totalPersonalExpenses);
 
   return {
     month,
@@ -470,6 +451,10 @@ export function getTrackedMonths(store: AppDataStore): string[] {
     months.add(expense.month);
   }
 
+  for (const adjustment of store.statementAdjustments) {
+    months.add(adjustment.month);
+  }
+
   months.add(store.preferences.displayMonth);
 
   return sortMonths([...months]);
@@ -479,7 +464,6 @@ export function buildCompanyTrend(store: AppDataStore): CompanyTrendPoint[] {
   return getTrackedMonths(store)
     .map((month) => {
       const snapshot = buildMonthlyPayroll(store, month);
-
       return {
         month,
         totalSales: snapshot.totalSales,

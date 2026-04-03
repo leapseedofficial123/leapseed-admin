@@ -15,10 +15,7 @@ import {
 import { buildPeriodOverview } from "@/lib/domain/payroll";
 import { formatCurrency, formatMonthLabel, formatNumber } from "@/lib/format";
 
-type LocalFilters = Pick<
-  AnalysisFilters,
-  "productId" | "memberId" | "pattern" | "companyRevenueMode"
->;
+type LocalFilters = Pick<AnalysisFilters, "productId" | "memberId" | "pattern" | "companyRevenueMode">;
 
 const emptyFilters: LocalFilters = {
   productId: "",
@@ -42,44 +39,39 @@ export function CompanyScreen() {
   const companySummaryRows = buildCompanySummaryCsvRows(store, startMonth, endMonth);
   const filteredMonthlyRows = buildFilteredMonthlyAnalysisCsvRows(analysis);
   const filteredDealRows = buildFilteredDealsCsvRows(analysis);
-
-  const handleResetFilters = () => {
-    setFilters(emptyFilters);
-  };
+  const periodModeLabel =
+    analysisRangeMode === "month"
+      ? "単月"
+      : analysisRangeMode === "quarter"
+        ? "3か月"
+        : analysisRangeMode === "halfyear"
+          ? "半年"
+          : "年間";
 
   return (
     <div className="space-y-6">
       <PageSection
-        title="分析の対象範囲"
-        description="期間は左メニューの対象月と表示期間で切り替えます。ここでは人・商品・案件条件で絞り込みます。"
+        title="分析の表示範囲"
+        description="対象期間の設定に合わせて、売上、利益、案件台帳を見比べられます。"
       >
         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-          <Badge tone="teal">対象月 {formatMonthLabel(selectedMonth)}</Badge>
-          <Badge>
-            {analysisRangeMode === "month"
-              ? "単月"
-              : analysisRangeMode === "quarter"
-                ? "3か月"
-                : "年間"}
-          </Badge>
+          <Badge tone="teal">基準月 {formatMonthLabel(selectedMonth)}</Badge>
+          <Badge>{periodModeLabel}</Badge>
           <span>{getRangeLabel(selectedMonth, analysisRangeMode)}</span>
         </div>
       </PageSection>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <StatCard label="集計月数" value={formatNumber(overview.months.length)} />
-        <StatCard label="会社売上" value={formatCurrency(overview.totalSales)} />
-        <StatCard
-          label="会社取り分合計"
-          value={formatCurrency(overview.totalCompanyShare)}
-        />
-        <StatCard label="全体給料合計" value={formatCurrency(overview.totalSalary)} />
+        <StatCard label="対象月数" value={formatNumber(overview.months.length)} />
+        <StatCard label="会社全体売上" value={formatCurrency(overview.totalSales)} />
+        <StatCard label="会社取り分" value={formatCurrency(overview.totalCompanyShare)} />
+        <StatCard label="会社経費" value={formatCurrency(overview.expenses)} />
         <StatCard label="利益" value={formatCurrency(overview.profit)} />
       </div>
 
       <PageSection
         title="CSV出力"
-        description="Excelでそのまま開ける UTF-8 CSV を出力できます。確定申告や月次確認では、会社月次サマリーと案件台帳が主な利用先です。"
+        description="Excelで開きやすいUTF-8 CSVです。月次サマリー、分析用、案件台帳を出力できます。"
       >
         <div className="flex flex-wrap gap-3">
           <button
@@ -111,29 +103,26 @@ export function CompanyScreen() {
           <button
             type="button"
             onClick={() =>
-              downloadCsv(
-                `leapseed-deal-ledger-${startMonth}-${endMonth}.csv`,
-                filteredDealRows,
-              )
+              downloadCsv(`leapseed-deal-ledger-${startMonth}-${endMonth}.csv`, filteredDealRows)
             }
             disabled={!filteredDealRows.length}
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            案件台帳CSV
+            成約台帳CSV
           </button>
         </div>
       </PageSection>
 
       <PageSection
-        title="分析フィルター"
-        description="期間は固定したまま、メンバー・商品・案件パターン・会社売上計上有無で絞り込みできます。"
+        title="絞り込み"
+        description="商品、メンバー、成約形態、会社売上への計上有無で絞り込めます。"
         action={
           <button
             type="button"
-            onClick={handleResetFilters}
+            onClick={() => setFilters(emptyFilters)}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
           >
-            フィルターをリセット
+            リセット
           </button>
         }
       >
@@ -171,7 +160,7 @@ export function CompanyScreen() {
             </Select>
           </div>
           <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">案件パターン</p>
+            <p className="mb-2 text-sm font-medium text-slate-700">成約形態</p>
             <Select
               value={filters.pattern}
               onChange={(event) =>
@@ -193,8 +182,7 @@ export function CompanyScreen() {
               onChange={(event) =>
                 setFilters((current) => ({
                   ...current,
-                  companyRevenueMode:
-                    event.target.value as LocalFilters["companyRevenueMode"],
+                  companyRevenueMode: event.target.value as LocalFilters["companyRevenueMode"],
                 }))
               }
             >
@@ -208,32 +196,26 @@ export function CompanyScreen() {
 
       <div className="grid gap-4 lg:grid-cols-5">
         <StatCard label="分析対象月数" value={formatNumber(analysis.totals.monthCount)} />
-        <StatCard label="該当案件数" value={formatNumber(analysis.totals.dealCount)} />
+        <StatCard label="成約件数" value={formatNumber(analysis.totals.dealCount)} />
         <StatCard label="売価合計" value={formatCurrency(analysis.totals.totalSales)} />
-        <StatCard
-          label="会社取り分合計"
-          value={formatCurrency(analysis.totals.totalCompanyShare)}
-        />
+        <StatCard label="会社取り分合計" value={formatCurrency(analysis.totals.totalCompanyShare)} />
         <StatCard
           label="参加者報酬合計"
           value={formatCurrency(analysis.totals.totalParticipantReward)}
         />
       </div>
 
-      <PageSection
-        title="月別分析"
-        description="フィルター条件に一致した案件だけを月ごとに集計しています。"
-      >
+      <PageSection title="月別推移" description="絞り込み後の成約だけを月別で確認できます。">
         {analysis.monthlyPoints.some((point) => point.dealCount > 0) ? (
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="text-slate-500">
                 <tr>
                   <th className="pb-3 pr-4">月</th>
-                  <th className="pb-3 pr-4">案件数</th>
+                  <th className="pb-3 pr-4">成約件数</th>
                   <th className="pb-3 pr-4">売価合計</th>
-                  <th className="pb-3 pr-4">会社取り分</th>
-                  <th className="pb-3">参加者報酬</th>
+                  <th className="pb-3 pr-4">会社取り分合計</th>
+                  <th className="pb-3">参加者報酬合計</th>
                 </tr>
               </thead>
               <tbody>
@@ -253,29 +235,23 @@ export function CompanyScreen() {
           </div>
         ) : (
           <EmptyState
-            title="条件に一致する月別データがありません"
-            description="絞り込み条件か売上入力を確認してください。"
+            title="条件に一致する月次データがありません"
+            description="期間や絞り込み条件を見直してください。"
           />
         )}
       </PageSection>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <PageSection
-          title="メンバー別分析"
-          description="期間内でどのメンバーがどれだけ関与したかを確認できます。"
-        >
+        <PageSection title="メンバー別分析" description="期間内で各メンバーがどれだけ売り上げたかを確認できます。">
           {analysis.memberSummaries.length ? (
             <div className="space-y-2">
               {analysis.memberSummaries.map((member) => (
-                <div
-                  key={member.memberId}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
-                >
+                <div key={member.memberId} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-medium text-slate-900">{member.memberName}</p>
                       <p className="mt-1 text-sm text-slate-500">
-                        関与売上 {formatCurrency(member.involvedSales)} / 案件数{" "}
+                        関与売上 {formatCurrency(member.involvedSales)} / 成約件数{" "}
                         {formatNumber(member.dealCount)}
                       </p>
                     </div>
@@ -288,28 +264,22 @@ export function CompanyScreen() {
             </div>
           ) : (
             <EmptyState
-              title="メンバー別集計がありません"
-              description="条件に一致する案件がないため、集計結果は空です。"
+              title="メンバー別データがありません"
+              description="この条件では対象となる成約がありません。"
             />
           )}
         </PageSection>
 
-        <PageSection
-          title="商品別分析"
-          description="期間内で売れた商品ごとの規模感を把握できます。"
-        >
+        <PageSection title="商品別分析" description="商品ごとの成約件数と会社取り分を確認できます。">
           {analysis.productSummaries.length ? (
             <div className="space-y-2">
               {analysis.productSummaries.map((product) => (
-                <div
-                  key={product.productId}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
-                >
+                <div key={product.productId} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-medium text-slate-900">{product.productName}</p>
                       <p className="mt-1 text-sm text-slate-500">
-                        売価 {formatCurrency(product.totalSales)} / 案件数{" "}
+                        売価 {formatCurrency(product.totalSales)} / 成約件数{" "}
                         {formatNumber(product.dealCount)}
                       </p>
                     </div>
@@ -322,17 +292,14 @@ export function CompanyScreen() {
             </div>
           ) : (
             <EmptyState
-              title="商品別集計がありません"
-              description="条件に一致する案件がないため、集計結果は空です。"
+              title="商品別データがありません"
+              description="この条件では対象となる商品がありません。"
             />
           )}
         </PageSection>
       </div>
 
-      <PageSection
-        title="案件台帳"
-        description="期間と絞り込み条件に一致する案件を一覧で確認できます。"
-      >
+      <PageSection title="成約台帳" description="期間内の成約を一覧で確認できます。">
         {analysis.filteredDeals.length ? (
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -341,11 +308,11 @@ export function CompanyScreen() {
                   <th className="pb-3 pr-4">対象月</th>
                   <th className="pb-3 pr-4">成約日</th>
                   <th className="pb-3 pr-4">商品</th>
-                  <th className="pb-3 pr-4">パターン</th>
+                  <th className="pb-3 pr-4">形態</th>
                   <th className="pb-3 pr-4">売価</th>
                   <th className="pb-3 pr-4">会社取り分</th>
                   <th className="pb-3 pr-4">参加者</th>
-                  <th className="pb-3">メモ</th>
+                  <th className="pb-3">備考</th>
                 </tr>
               </thead>
               <tbody>
@@ -374,8 +341,8 @@ export function CompanyScreen() {
           </div>
         ) : (
           <EmptyState
-            title="条件に一致する案件がありません"
-            description="期間やフィルター条件を見直してください。"
+            title="成約データがありません"
+            description="期間や絞り込み条件を見直してください。"
           />
         )}
       </PageSection>

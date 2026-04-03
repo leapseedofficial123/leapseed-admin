@@ -1,7 +1,7 @@
 import { getCurrentMonth, getToday } from "@/lib/date";
 import type { CompensationBand, CompensationType } from "@/types/app";
 
-export const APP_TITLE = "LeapSeed 給料計算";
+export const APP_TITLE = "LeapSeed 給与計算サイト";
 export const STORAGE_KEY = "leapseed-payroll-store";
 export const STORE_VERSION = 1;
 
@@ -14,8 +14,21 @@ export const DEAL_PATTERN_OPTIONS = [
   { value: "AABC", label: "AABC" },
 ] as const;
 
+export const ANALYSIS_RANGE_OPTIONS = [
+  { value: "month", label: "単月" },
+  { value: "quarter", label: "3か月" },
+  { value: "halfyear", label: "半年" },
+  { value: "year", label: "年間" },
+] as const;
+
 export const DEFAULT_COMPENSATION_TYPES: CompensationType[] = [
-  { id: "AC", label: "AC", active: true, dealPattern: "AC", note: "Bのみで完結した案件" },
+  {
+    id: "AC",
+    label: "AC",
+    active: true,
+    dealPattern: "AC",
+    note: "Bのみで成約した案件",
+  },
   {
     id: "ABC_A",
     label: "ABC_A",

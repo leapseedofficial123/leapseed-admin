@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Badge,
   EmptyState,
@@ -13,10 +13,12 @@ import {
 } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
 import { DEAL_PATTERN_OPTIONS, DEFAULT_TODAY } from "@/lib/constants";
+import { getMonthEndDate, getMonthFromDate, getMonthStartDate } from "@/lib/date";
 import { calculateCompanyShare } from "@/lib/domain/company-share";
 import {
   formatCurrency,
   formatDateLabel,
+  formatMonthLabel,
   parseNumberInput,
   toInputString,
 } from "@/lib/format";
@@ -30,7 +32,6 @@ interface ParticipantFormState {
 
 interface DealFormState {
   id?: string;
-  targetMonth: string;
   closedOn: string;
   productId: string;
   salePrice: string;
@@ -67,9 +68,11 @@ function createPatternParticipants(pattern: string): ParticipantFormState[] {
 }
 
 function createEmptyDealForm(targetMonth: string): DealFormState {
+  const suggestedDate =
+    getMonthFromDate(DEFAULT_TODAY) === targetMonth ? DEFAULT_TODAY : getMonthStartDate(targetMonth);
+
   return {
-    targetMonth,
-    closedOn: DEFAULT_TODAY,
+    closedOn: suggestedDate,
     productId: "",
     salePrice: "",
     companyShare: "",
@@ -87,11 +90,20 @@ export function DealsScreen() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [error, setError] = useState("");
 
+  const monthDeals = useMemo(
+    () =>
+      store.deals
+        .filter((deal) => deal.targetMonth === selectedMonth)
+        .sort((left, right) => right.closedOn.localeCompare(left.closedOn)),
+    [selectedMonth, store.deals],
+  );
   const activeCompensationTypes = store.compensationTypes.filter((type) => type.active);
   const selectedProduct = store.products.find((product) => product.id === form.productId);
   const duplicateMemberIds = form.participants
     .map((participant) => participant.memberId)
     .filter((memberId, index, list) => memberId && list.indexOf(memberId) !== index);
+  const minDate = getMonthStartDate(selectedMonth);
+  const maxDate = getMonthEndDate(selectedMonth);
 
   const recalculateCompanyShare = (
     productId: string,
@@ -132,13 +144,9 @@ export function DealsScreen() {
       return;
     }
 
-    const participants = store.dealParticipants.filter(
-      (participant) => participant.dealId === deal.id,
-    );
-
+    const participants = store.dealParticipants.filter((participant) => participant.dealId === deal.id);
     setForm({
       id: deal.id,
-      targetMonth: deal.targetMonth,
       closedOn: deal.closedOn,
       productId: deal.productId,
       salePrice: toInputString(deal.salePrice),
@@ -194,8 +202,13 @@ export function DealsScreen() {
   };
 
   const handleSubmit = () => {
-    if (!form.targetMonth || !form.closedOn || !form.productId) {
-      setError("対象月・成約日・商品は必須です。");
+    if (!form.closedOn || !form.productId) {
+      setError("成約日と商品は必須です。");
+      return;
+    }
+
+    if (getMonthFromDate(form.closedOn) !== selectedMonth) {
+      setError("この画面では対象月と同じ月の成約日だけ登録できます。");
       return;
     }
 
@@ -205,22 +218,25 @@ export function DealsScreen() {
     }
 
     if (duplicateMemberIds.length) {
-      setError("同じメンバーが参加者に重複しています。");
+      setError("同じメンバーが重複しています。");
+      return;
+    }
+
+    if (form.participants.length === 0) {
+      setError("参加者を1名以上登録してください。");
       return;
     }
 
     if (
-      form.participants.some(
-        (participant) => !participant.memberId || !participant.compensationTypeId,
-      )
+      form.participants.some((participant) => !participant.memberId || !participant.compensationTypeId)
     ) {
-      setError("参加者ごとにメンバーと報酬適用区分を選択してください。");
+      setError("参加者ごとのメンバーと報酬区分をすべて選択してください。");
       return;
     }
 
     saveDealWithParticipants({
       id: form.id,
-      targetMonth: form.targetMonth,
+      targetMonth: selectedMonth,
       closedOn: form.closedOn,
       productId: form.productId,
       salePrice: parseNumberInput(form.salePrice),
@@ -238,124 +254,110 @@ export function DealsScreen() {
   return (
     <>
       <PageSection
-        title="案件一覧"
-        description="一覧から編集を開く形にしています。追加するときだけ案件入力フォームを表示します。"
+        title={`${formatMonthLabel(selectedMonth)}の成約一覧`}
+        description="この月に成約した案件を1件ずつ登録します。成約日は対象月の範囲内だけ入力できます。"
         action={
           <button
             type="button"
             onClick={openCreatePanel}
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800"
           >
-            案件追加
+            成約追加
           </button>
         }
       >
-        {store.deals.length ? (
+        {monthDeals.length ? (
           <div className="space-y-3">
-            {[...store.deals]
-              .sort((left, right) => right.closedOn.localeCompare(left.closedOn))
-              .map((deal) => {
-                const product = store.products.find((item) => item.id === deal.productId);
-                const participants = store.dealParticipants.filter(
-                  (participant) => participant.dealId === deal.id,
-                );
+            {monthDeals.map((deal) => {
+              const product = store.products.find((item) => item.id === deal.productId);
+              const participants = store.dealParticipants.filter(
+                (participant) => participant.dealId === deal.id,
+              );
 
-                return (
-                  <div
-                    key={deal.id}
-                    className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4"
-                  >
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-lg font-semibold text-slate-900">
-                            {product?.name ?? "未設定商品"}
-                          </p>
-                          <Badge>{deal.pattern}</Badge>
-                          {deal.countForCompanyRevenue ? (
-                            <Badge tone="teal">会社売上に計上</Badge>
-                          ) : (
-                            <Badge tone="rose">会社売上に計上しない</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-slate-500">
-                          {formatDateLabel(deal.closedOn)} / 対象月 {deal.targetMonth}
+              return (
+                <div key={deal.id} className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-lg font-semibold text-slate-900">
+                          {product?.name ?? "未設定の商品"}
                         </p>
-                        <p className="text-sm text-slate-600">
-                          売価 {formatCurrency(deal.salePrice)} / 会社取り分{" "}
-                          {formatCurrency(deal.companyShare)}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {participants.map((participant) => {
-                            const member = store.members.find(
-                              (item) => item.id === participant.memberId,
-                            );
-
-                            return (
-                              <Badge key={participant.id}>
-                                {member?.name ?? "不明"} / {participant.compensationTypeId}
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                        {deal.note ? (
-                          <p className="text-sm leading-6 text-slate-600">{deal.note}</p>
-                        ) : null}
+                        <Badge>{deal.pattern}</Badge>
+                        {deal.countForCompanyRevenue ? (
+                          <Badge tone="teal">会社売上に計上</Badge>
+                        ) : (
+                          <Badge tone="rose">会社売上に計上しない</Badge>
+                        )}
                       </div>
+                      <p className="text-sm text-slate-500">
+                        {formatDateLabel(deal.closedOn)} / 対象月 {formatMonthLabel(deal.targetMonth)}
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        売価 {formatCurrency(deal.salePrice)} / 会社取り分 {formatCurrency(deal.companyShare)}
+                      </p>
                       <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditPanel(deal.id)}
-                          className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
-                        >
-                          編集
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteDeal(deal.id)}
-                          className="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50"
-                        >
-                          削除
-                        </button>
+                        {participants.map((participant) => {
+                          const member = store.members.find((item) => item.id === participant.memberId);
+
+                          return (
+                            <Badge key={participant.id}>
+                              {member?.name ?? "未設定"} / {participant.compensationTypeId}
+                            </Badge>
+                          );
+                        })}
                       </div>
+                      {deal.note ? <p className="text-sm leading-6 text-slate-600">{deal.note}</p> : null}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditPanel(deal.id)}
+                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                      >
+                        編集
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteDeal(deal.id)}
+                        className="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50"
+                      >
+                        削除
+                      </button>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <EmptyState
-            title="案件がまだありません"
-            description="案件追加から登録すると、ここに一覧表示されます。"
+            title={`${formatMonthLabel(selectedMonth)}の成約はまだありません`}
+            description="成約追加からこの月の成約を登録してください。"
           />
         )}
       </PageSection>
 
       <OverlayPanel
         open={isPanelOpen}
-        title={form.id ? "案件編集" : "案件入力"}
-        description="案件単位で入力し、参加者をぶら下げる形で管理します。"
+        title={form.id ? "成約を編集" : "成約追加"}
+        description={`${formatMonthLabel(selectedMonth)}の成約だけ登録できます。`}
         onClose={closePanel}
       >
         <div className="grid gap-4 xl:grid-cols-[repeat(4,minmax(0,1fr))]">
           <div>
-            <Label required>対象月</Label>
-            <Input
-              type="month"
-              value={form.targetMonth}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, targetMonth: event.target.value }))
-              }
-            />
+            <Label>対象月</Label>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
+              {formatMonthLabel(selectedMonth)}
+            </div>
           </div>
           <div>
             <Label required>成約日</Label>
             <Input
               type="date"
               value={form.closedOn}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, closedOn: event.target.value }))
-              }
+              min={minDate}
+              max={maxDate}
+              onChange={(event) => setForm((current) => ({ ...current, closedOn: event.target.value }))}
             />
           </div>
           <div>
@@ -372,7 +374,7 @@ export function DealsScreen() {
             </Select>
           </div>
           <div>
-            <Label>案件パターン</Label>
+            <Label>成約形態</Label>
             <Select value={form.pattern} onChange={(event) => handlePatternChange(event.target.value)}>
               {DEAL_PATTERN_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -432,9 +434,7 @@ export function DealsScreen() {
             <Label>会社取り分</Label>
             <Input
               value={form.companyShare}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, companyShare: event.target.value }))
-              }
+              onChange={(event) => setForm((current) => ({ ...current, companyShare: event.target.value }))}
               inputMode="numeric"
               placeholder="350000"
             />
@@ -459,7 +459,7 @@ export function DealsScreen() {
             <Textarea
               value={form.note}
               onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
-              placeholder="案件の補足"
+              placeholder="成約のメモ"
             />
           </div>
         </div>
@@ -469,7 +469,7 @@ export function DealsScreen() {
             <div>
               <p className="font-semibold text-slate-900">参加者</p>
               <p className="text-sm text-slate-500">
-                同じ案件でも会社売上は1回だけ計上します。
+                同じメンバーの重複登録は警告します。会社売上は1件につき1回だけ計上されます。
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -495,7 +495,7 @@ export function DealsScreen() {
                 }
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
               >
-                パターン初期化
+                形態初期値に戻す
               </button>
             </div>
           </div>
@@ -514,9 +514,7 @@ export function DealsScreen() {
                       setForm((current) => ({
                         ...current,
                         participants: current.participants.map((item, itemIndex) =>
-                          itemIndex === index
-                            ? { ...item, memberId: event.target.value }
-                            : item,
+                          itemIndex === index ? { ...item, memberId: event.target.value } : item,
                         ),
                       }))
                     }
@@ -530,7 +528,7 @@ export function DealsScreen() {
                   </Select>
                 </div>
                 <div>
-                  <Label>報酬適用区分</Label>
+                  <Label>報酬区分</Label>
                   <Select
                     value={participant.compensationTypeId}
                     onChange={(event) =>
@@ -571,7 +569,7 @@ export function DealsScreen() {
                         ),
                       }))
                     }
-                    placeholder="任意"
+                    placeholder="参加者メモ"
                   />
                 </div>
                 <div className="flex items-end">
@@ -580,9 +578,7 @@ export function DealsScreen() {
                     onClick={() =>
                       setForm((current) => ({
                         ...current,
-                        participants: current.participants.filter(
-                          (_, itemIndex) => itemIndex !== index,
-                        ),
+                        participants: current.participants.filter((_, itemIndex) => itemIndex !== index),
                       }))
                     }
                     className="w-full rounded-lg border border-rose-200 px-4 py-2.5 text-sm text-rose-700 transition hover:bg-rose-50"
@@ -597,7 +593,7 @@ export function DealsScreen() {
 
         {selectedProduct ? (
           <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-            商品設定: {selectedProduct.name} / 売価入力 {selectedProduct.saleInputMode} / 取り分方式{" "}
+            商品設定: {selectedProduct.name} / 売価入力 {selectedProduct.saleInputMode} / 会社取り分方式{" "}
             {selectedProduct.companyShareMethod}
             {form.companyShareMode === "auto"
               ? ` / 自動計算結果 ${formatCurrency(parseNumberInput(form.companyShare))}`
@@ -607,7 +603,7 @@ export function DealsScreen() {
 
         {duplicateMemberIds.length ? (
           <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            同じメンバーが複数回選ばれています。重複登録の可能性があるので確認してください。
+            同じメンバーが複数回選ばれています。意図した登録か確認してください。
           </div>
         ) : null}
 
@@ -623,7 +619,7 @@ export function DealsScreen() {
             onClick={handleSubmit}
             className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm text-white transition hover:bg-slate-800"
           >
-            {form.id ? "案件更新" : "案件追加"}
+            {form.id ? "更新" : "成約追加"}
           </button>
           <button
             type="button"

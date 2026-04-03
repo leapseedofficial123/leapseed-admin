@@ -27,6 +27,7 @@ export function createBlankAppDataStore(
     ],
     salaryAdjustments: [],
     memberExpenses: [],
+    statementAdjustments: [],
     preferences: {
       displayMonth,
       analysisRangeMode: "month",

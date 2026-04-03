@@ -98,7 +98,16 @@ export interface MemberExpense {
   note: string;
 }
 
-export type AnalysisRangeMode = "month" | "quarter" | "year";
+export interface StatementAdjustment {
+  id: string;
+  month: string;
+  memberId: string;
+  title: string;
+  amount: number;
+  note: string;
+}
+
+export type AnalysisRangeMode = "month" | "quarter" | "halfyear" | "year";
 
 export interface AppPreferences {
   displayMonth: string;
@@ -117,6 +126,7 @@ export interface AppDataStore {
   monthlySettings: MonthlySetting[];
   salaryAdjustments: SalaryAdjustment[];
   memberExpenses: MemberExpense[];
+  statementAdjustments: StatementAdjustment[];
   preferences: AppPreferences;
 }
 

@@ -11,7 +11,7 @@ export function createSampleAppDataStore(): AppDataStore {
     members: [
       {
         id: "member_ayane",
-        name: "伊藤綾音",
+        name: "綾音",
         displayOrder: 1,
         isActive: true,
         isExecutive: true,
@@ -21,7 +21,7 @@ export function createSampleAppDataStore(): AppDataStore {
       },
       {
         id: "member_taketo",
-        name: "岩淵卓丈",
+        name: "武人",
         displayOrder: 2,
         isActive: true,
         isExecutive: false,
@@ -31,7 +31,7 @@ export function createSampleAppDataStore(): AppDataStore {
       },
       {
         id: "member_yuya",
-        name: "稙田悠哉",
+        name: "悠也",
         displayOrder: 3,
         isActive: true,
         isExecutive: false,
@@ -41,7 +41,7 @@ export function createSampleAppDataStore(): AppDataStore {
       },
       {
         id: "member_hiroki",
-        name: "山本寛樹",
+        name: "宏樹",
         displayOrder: 4,
         isActive: true,
         isExecutive: true,
@@ -51,7 +51,7 @@ export function createSampleAppDataStore(): AppDataStore {
       },
       {
         id: "member_kaede",
-        name: "高須楓",
+        name: "楓",
         displayOrder: 5,
         isActive: true,
         isExecutive: false,
@@ -61,7 +61,7 @@ export function createSampleAppDataStore(): AppDataStore {
       },
       {
         id: "member_ryo",
-        name: "寺尾凌",
+        name: "亮",
         displayOrder: 6,
         isActive: true,
         isExecutive: false,
@@ -93,7 +93,7 @@ export function createSampleAppDataStore(): AppDataStore {
         companyShareFixedAmount: 350_000,
         companyShareRate: 0,
         cost: 0,
-        note: "固定取り分35万円",
+        note: "固定35万円",
       },
       {
         id: "product_ad",
@@ -131,7 +131,7 @@ export function createSampleAppDataStore(): AppDataStore {
         companyShareMode: "auto",
         countForCompanyRevenue: true,
         pattern: "ABC",
-        note: "LP制作の標準案件",
+        note: "LP制作の紹介案件",
       },
       {
         id: "deal_2026_03_02",
@@ -167,7 +167,7 @@ export function createSampleAppDataStore(): AppDataStore {
         companyShareMode: "manual",
         countForCompanyRevenue: true,
         pattern: "ABC",
-        note: "特殊条件で取り分上書き",
+        note: "手入力の会社取り分",
       },
       {
         id: "deal_2026_02_01",
@@ -183,69 +183,15 @@ export function createSampleAppDataStore(): AppDataStore {
       },
     ],
     dealParticipants: [
-      {
-        id: "part_1",
-        dealId: "deal_2026_03_01",
-        memberId: "member_ayane",
-        compensationTypeId: "ABC_A",
-        note: "",
-      },
-      {
-        id: "part_2",
-        dealId: "deal_2026_03_01",
-        memberId: "member_taketo",
-        compensationTypeId: "ABC_B",
-        note: "",
-      },
-      {
-        id: "part_3",
-        dealId: "deal_2026_03_02",
-        memberId: "member_yuya",
-        compensationTypeId: "AC",
-        note: "",
-      },
-      {
-        id: "part_4",
-        dealId: "deal_2026_03_03",
-        memberId: "member_hiroki",
-        compensationTypeId: "AABC_A",
-        note: "",
-      },
-      {
-        id: "part_5",
-        dealId: "deal_2026_03_03",
-        memberId: "member_kaede",
-        compensationTypeId: "AABC_A",
-        note: "",
-      },
-      {
-        id: "part_6",
-        dealId: "deal_2026_03_03",
-        memberId: "member_ryo",
-        compensationTypeId: "AABC_B",
-        note: "",
-      },
-      {
-        id: "part_7",
-        dealId: "deal_2026_03_04",
-        memberId: "member_ayane",
-        compensationTypeId: "ABC_A",
-        note: "",
-      },
-      {
-        id: "part_8",
-        dealId: "deal_2026_03_04",
-        memberId: "member_yuya",
-        compensationTypeId: "ABC_B",
-        note: "",
-      },
-      {
-        id: "part_9",
-        dealId: "deal_2026_02_01",
-        memberId: "member_taketo",
-        compensationTypeId: "AC",
-        note: "",
-      },
+      { id: "part_1", dealId: "deal_2026_03_01", memberId: "member_ayane", compensationTypeId: "ABC_A", note: "" },
+      { id: "part_2", dealId: "deal_2026_03_01", memberId: "member_taketo", compensationTypeId: "ABC_B", note: "" },
+      { id: "part_3", dealId: "deal_2026_03_02", memberId: "member_yuya", compensationTypeId: "AC", note: "" },
+      { id: "part_4", dealId: "deal_2026_03_03", memberId: "member_hiroki", compensationTypeId: "AABC_A", note: "" },
+      { id: "part_5", dealId: "deal_2026_03_03", memberId: "member_kaede", compensationTypeId: "AABC_A", note: "" },
+      { id: "part_6", dealId: "deal_2026_03_03", memberId: "member_ryo", compensationTypeId: "AABC_B", note: "" },
+      { id: "part_7", dealId: "deal_2026_03_04", memberId: "member_ayane", compensationTypeId: "ABC_A", note: "" },
+      { id: "part_8", dealId: "deal_2026_03_04", memberId: "member_yuya", compensationTypeId: "ABC_B", note: "" },
+      { id: "part_9", dealId: "deal_2026_02_01", memberId: "member_taketo", compensationTypeId: "AC", note: "" },
     ],
     compensationTypes: DEFAULT_COMPENSATION_TYPES,
     referralRelationships: [
@@ -269,7 +215,7 @@ export function createSampleAppDataStore(): AppDataStore {
       {
         month: "2026-03",
         expense: 450_000,
-        note: "広告費と外注費",
+        note: "広告費と固定費",
       },
       {
         month: "2026-02",
@@ -283,14 +229,14 @@ export function createSampleAppDataStore(): AppDataStore {
         month: "2026-03",
         memberId: "member_ayane",
         amount: 30_000,
-        note: "役割調整",
+        note: "役員調整",
       },
       {
         id: "adj_2",
         month: "2026-03",
         memberId: "member_taketo",
         amount: -10_000,
-        note: "精算",
+        note: "端数調整",
       },
     ],
     memberExpenses: [
@@ -317,6 +263,16 @@ export function createSampleAppDataStore(): AppDataStore {
         amount: 9_000,
         category: "通信費",
         note: "",
+      },
+    ],
+    statementAdjustments: [
+      {
+        id: "statement_adjustment_1",
+        month: "2026-03",
+        memberId: "member_taketo",
+        title: "貸付返済",
+        amount: -20_000,
+        note: "前月貸付分の返済",
       },
     ],
     preferences: {

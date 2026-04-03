@@ -8,7 +8,11 @@ import {
   type ReactNode,
 } from "react";
 import { getRangeMonths, sortMonths } from "@/lib/date";
-import { buildCompanyTrend, buildMonthlyPayroll, getTrackedMonths } from "@/lib/domain/payroll";
+import {
+  buildCompanyTrend,
+  buildMonthlyPayroll,
+  getTrackedMonths,
+} from "@/lib/domain/payroll";
 import { createId } from "@/lib/ids";
 import { createBrowserRepository } from "@/lib/repository/app-repository";
 import type {
@@ -18,13 +22,14 @@ import type {
   CompensationType,
   Deal,
   DealParticipant,
-  MemberExpense,
   Member,
+  MemberExpense,
   MonthlyPayrollSnapshot,
   MonthlySetting,
   Product,
   ReferralRelationship,
   SalaryAdjustment,
+  StatementAdjustment,
 } from "@/types/app";
 
 interface DraftParticipant extends Omit<DealParticipant, "id" | "dealId"> {
@@ -63,6 +68,8 @@ interface AppStateContextValue {
   deleteSalaryAdjustment: (adjustmentId: string) => void;
   saveMemberExpense: (expense: MemberExpense) => void;
   deleteMemberExpense: (expenseId: string) => void;
+  saveStatementAdjustment: (adjustment: StatementAdjustment) => void;
+  deleteStatementAdjustment: (adjustmentId: string) => void;
   exportJson: () => string;
   importJson: (raw: string) => void;
   resetData: (mode: "sample" | "blank") => void;
@@ -113,11 +120,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const companyTrend = buildCompanyTrend(store);
   const trackedMonths = getTrackedMonths(store);
   const analysisRangeMode = store.preferences.analysisRangeMode;
-  const analysisMonths = sortMonths(
-    getRangeMonths(selectedMonth, analysisRangeMode).filter((month) =>
-      trackedMonths.includes(month),
-    ),
-  );
+  const analysisMonths = sortMonths(getRangeMonths(selectedMonth, analysisRangeMode));
 
   const value: AppStateContextValue = {
     store,
@@ -172,6 +175,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         ),
         memberExpenses: current.memberExpenses.filter(
           (expense) => expense.memberId !== memberId,
+        ),
+        statementAdjustments: current.statementAdjustments.filter(
+          (adjustment) => adjustment.memberId !== memberId,
         ),
       }));
     },
@@ -329,6 +335,20 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setStore((current) => ({
         ...current,
         memberExpenses: current.memberExpenses.filter((expense) => expense.id !== expenseId),
+      }));
+    },
+    saveStatementAdjustment(adjustment) {
+      setStore((current) => ({
+        ...current,
+        statementAdjustments: upsertById(current.statementAdjustments, adjustment),
+      }));
+    },
+    deleteStatementAdjustment(adjustmentId) {
+      setStore((current) => ({
+        ...current,
+        statementAdjustments: current.statementAdjustments.filter(
+          (adjustment) => adjustment.id !== adjustmentId,
+        ),
       }));
     },
     exportJson() {

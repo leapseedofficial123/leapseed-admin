@@ -12,13 +12,11 @@ export function PageSection({
   action?: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5">
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h2>
-          {description ? (
-            <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
-          ) : null}
+          {description ? <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p> : null}
         </div>
         {action ? <div>{action}</div> : null}
       </div>
@@ -37,7 +35,7 @@ export function StatCard({
   caption?: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5">
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-sm text-slate-500">{label}</p>
       <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{value}</p>
       {caption ? <p className="mt-2 text-xs text-slate-500">{caption}</p> : null}
@@ -129,9 +127,7 @@ export function Badge({
   };
 
   return (
-    <span
-      className={`inline-flex rounded-md border px-2 py-1 text-xs font-medium ${classes[tone]}`}
-    >
+    <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-medium ${classes[tone]}`}>
       {children}
     </span>
   );
@@ -158,7 +154,7 @@ export function OverlayPanel({
     <div className="fixed inset-0 z-50">
       <button
         type="button"
-        aria-label="閉じる"
+        aria-label="パネルを閉じる"
         onClick={onClose}
         className="absolute inset-0 bg-slate-900/30"
       />
@@ -167,9 +163,7 @@ export function OverlayPanel({
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-              {description ? (
-                <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
-              ) : null}
+              {description ? <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p> : null}
             </div>
             <button
               type="button"

@@ -1,10 +1,6 @@
-import { isMonthInRange } from "@/lib/date";
-import { buildMonthlyPayroll, getTrackedMonths } from "@/lib/domain/payroll";
-import type {
-  AppDataStore,
-  MonthlyPayrollSnapshot,
-  ProductSummary,
-} from "@/types/app";
+import { getMonthsBetween, sortMonths } from "@/lib/date";
+import { buildMonthlyPayroll } from "@/lib/domain/payroll";
+import type { AppDataStore, MonthlyPayrollSnapshot, ProductSummary } from "@/types/app";
 
 export interface AnalysisFilters {
   startMonth: string;
@@ -99,6 +95,10 @@ export interface CompanyAnalysisResult {
   };
 }
 
+function roundMoney(value: number) {
+  return Math.round(value || 0);
+}
+
 function normalizeMonthRange(startMonth: string, endMonth: string) {
   if (!startMonth && !endMonth) {
     return { startMonth: "", endMonth: "" };
@@ -119,42 +119,17 @@ function normalizeMonthRange(startMonth: string, endMonth: string) {
   return { startMonth: endMonth, endMonth: startMonth };
 }
 
-function roundMoney(value: number) {
-  return Math.round(value || 0);
-}
-
-export function createDefaultAnalysisFilters(
-  trackedMonths: string[],
-  fallbackMonth: string,
-): AnalysisFilters {
-  const startMonth = trackedMonths[0] ?? fallbackMonth;
-  const endMonth = trackedMonths[trackedMonths.length - 1] ?? fallbackMonth;
-
-  return {
-    startMonth,
-    endMonth,
-    productId: "",
-    memberId: "",
-    pattern: "",
-    companyRevenueMode: "all",
-  };
-}
-
 export function buildCompanyAnalysis(
   store: AppDataStore,
   filters: AnalysisFilters,
 ): CompanyAnalysisResult {
   const normalizedRange = normalizeMonthRange(filters.startMonth, filters.endMonth);
-  const months = getTrackedMonths(store).filter((month) =>
-    isMonthInRange(month, normalizedRange.startMonth, normalizedRange.endMonth),
-  );
+  const months = getMonthsBetween(normalizedRange.startMonth, normalizedRange.endMonth);
   const snapshotsByMonth = Object.fromEntries(
     months.map((month) => [month, buildMonthlyPayroll(store, month)]),
   );
   const membersById = Object.fromEntries(store.members.map((member) => [member.id, member]));
-  const productsById = Object.fromEntries(
-    store.products.map((product) => [product.id, product]),
-  );
+  const productsById = Object.fromEntries(store.products.map((product) => [product.id, product]));
   const compensationTypesById = Object.fromEntries(
     store.compensationTypes.map((type) => [type.id, type]),
   );
@@ -169,14 +144,7 @@ export function buildCompanyAnalysis(
     return accumulator;
   }, {});
   const rewardByParticipantId = Object.values(snapshotsByMonth).reduce<
-    Record<
-      string,
-      {
-        memberId: string;
-        memberName: string;
-        reward: number;
-      }
-    >
+    Record<string, { memberId: string; memberName: string; reward: number }>
   >((accumulator, snapshot) => {
     for (const memberSummary of snapshot.memberSummaries) {
       for (const detail of memberSummary.dealDetails) {
@@ -190,7 +158,18 @@ export function buildCompanyAnalysis(
 
     return accumulator;
   }, {});
-  const monthlyPointMap: Record<string, AnalysisMonthlyPoint> = {};
+  const monthlyPointMap = Object.fromEntries(
+    months.map((month) => [
+      month,
+      {
+        month,
+        dealCount: 0,
+        totalSales: 0,
+        totalCompanyShare: 0,
+        totalParticipantReward: 0,
+      },
+    ]),
+  ) as Record<string, AnalysisMonthlyPoint>;
   const memberAccumulator: Record<
     string,
     {
@@ -204,18 +183,8 @@ export function buildCompanyAnalysis(
   const productAccumulator: Record<string, AnalysisProductSummary> = {};
   const filteredDeals: AnalysisDealRow[] = [];
 
-  for (const month of months) {
-    monthlyPointMap[month] = {
-      month,
-      dealCount: 0,
-      totalSales: 0,
-      totalCompanyShare: 0,
-      totalParticipantReward: 0,
-    };
-  }
-
   for (const deal of store.deals) {
-    if (!months.includes(deal.targetMonth)) {
+    if (deal.targetMonth < normalizedRange.startMonth || deal.targetMonth > normalizedRange.endMonth) {
       continue;
     }
 
@@ -236,11 +205,7 @@ export function buildCompanyAnalysis(
     }
 
     const participants = participantsByDealId[deal.id] ?? [];
-
-    if (
-      filters.memberId &&
-      !participants.some((participant) => participant.memberId === filters.memberId)
-    ) {
+    if (filters.memberId && !participants.some((participant) => participant.memberId === filters.memberId)) {
       continue;
     }
 
@@ -249,19 +214,16 @@ export function buildCompanyAnalysis(
       : participants;
     const product = productsById[deal.productId];
     const participantNames = participants.map(
-      (participant) => membersById[participant.memberId]?.name ?? "不明なメンバー",
+      (participant) => membersById[participant.memberId]?.name ?? "未設定メンバー",
     );
     const compensationTypeLabels = participants.map(
       (participant) =>
-        compensationTypesById[participant.compensationTypeId]?.label ??
-        participant.compensationTypeId,
+        compensationTypesById[participant.compensationTypeId]?.label ?? participant.compensationTypeId,
     );
     const participantRewardBreakdown = analysisParticipants.map((participant) => {
       const rewardSummary = rewardByParticipantId[participant.id];
-      const memberName =
-        rewardSummary?.memberName ?? membersById[participant.memberId]?.name ?? "不明";
+      const memberName = rewardSummary?.memberName ?? membersById[participant.memberId]?.name ?? "未設定";
       const reward = rewardSummary?.reward ?? 0;
-
       return `${memberName}: ${reward}`;
     });
     const participantRewardTotal = roundMoney(
@@ -312,7 +274,7 @@ export function buildCompanyAnalysis(
       if (!memberAccumulator[participant.memberId]) {
         memberAccumulator[participant.memberId] = {
           memberId: participant.memberId,
-          memberName: membersById[participant.memberId]?.name ?? "不明なメンバー",
+          memberName: membersById[participant.memberId]?.name ?? "未設定メンバー",
           dealIds: new Set<string>(),
           involvedSales: 0,
           rewardTotal: 0,
@@ -331,9 +293,7 @@ export function buildCompanyAnalysis(
     dealCount: monthlyPointMap[month]?.dealCount ?? 0,
     totalSales: roundMoney(monthlyPointMap[month]?.totalSales ?? 0),
     totalCompanyShare: roundMoney(monthlyPointMap[month]?.totalCompanyShare ?? 0),
-    totalParticipantReward: roundMoney(
-      monthlyPointMap[month]?.totalParticipantReward ?? 0,
-    ),
+    totalParticipantReward: roundMoney(monthlyPointMap[month]?.totalParticipantReward ?? 0),
   }));
   const memberSummaries = Object.values(memberAccumulator)
     .map((summary) => ({
@@ -381,11 +341,21 @@ export function buildCompanyAnalysis(
   };
 }
 
-export function buildMemberHistory(
-  store: AppDataStore,
-  memberId: string,
-): MemberHistoryResult {
-  const monthlyRows = getTrackedMonths(store)
+export function buildMemberHistory(store: AppDataStore, memberId: string): MemberHistoryResult {
+  const months = sortMonths(
+    Array.from(
+      new Set([
+        ...store.deals.map((deal) => deal.targetMonth),
+        ...store.monthlySettings.map((setting) => setting.month),
+        ...store.salaryAdjustments.map((adjustment) => adjustment.month),
+        ...store.memberExpenses.map((expense) => expense.month),
+        ...store.statementAdjustments.map((adjustment) => adjustment.month),
+        store.preferences.displayMonth,
+      ]),
+    ),
+  );
+
+  const monthlyRows = months
     .map((month) => {
       const snapshot = buildMonthlyPayroll(store, month);
       const summary = snapshot.memberSummaries.find((item) => item.memberId === memberId);

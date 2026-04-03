@@ -8,12 +8,13 @@ import type {
   CompensationType,
   Deal,
   DealParticipant,
-  MemberExpense,
   Member,
+  MemberExpense,
   MonthlySetting,
   Product,
   ReferralRelationship,
   SalaryAdjustment,
+  StatementAdjustment,
 } from "@/types/app";
 
 export interface AppRepository {
@@ -58,6 +59,7 @@ function normalizeStore(raw: unknown): AppDataStore {
       : fallback.monthlySettings,
     salaryAdjustments: asArray<SalaryAdjustment>(candidate.salaryAdjustments),
     memberExpenses: asArray<MemberExpense>(candidate.memberExpenses),
+    statementAdjustments: asArray<StatementAdjustment>(candidate.statementAdjustments),
     preferences: {
       displayMonth:
         candidate.preferences?.displayMonth || fallback.preferences.displayMonth,

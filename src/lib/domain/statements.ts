@@ -19,6 +19,25 @@ export interface StatementExpenseRow {
   note: string;
 }
 
+export interface StatementAdjustmentRow {
+  id: string;
+  title: string;
+  amount: number;
+  note: string;
+}
+
+export interface StatementTemplateRow {
+  id: string;
+  index: number;
+  memberName: string;
+  productName: string;
+  salePrice: number;
+  closedOn: string;
+  compensationTypeLabel: string;
+  appliedRate: number;
+  reward: number;
+}
+
 export interface StatementData {
   memberId: string;
   memberName: string;
@@ -31,15 +50,33 @@ export interface StatementData {
   executiveReward: number;
   adjustment: number;
   personalExpense: number;
+  statementAdjustmentTotal: number;
   finalSalary: number;
+  transferAmount: number;
   detailRows: ReturnType<typeof buildMonthlyPayroll>["memberSummaries"][number]["dealDetails"];
   referralRows: ReturnType<typeof buildMonthlyPayroll>["memberSummaries"][number]["referralDetails"];
   groupedRows: StatementGroupRow[];
   expenseRows: StatementExpenseRow[];
+  statementAdjustmentRows: StatementAdjustmentRow[];
+  templateRows: StatementTemplateRow[];
+  overflowRows: StatementTemplateRow[];
+  abcRateLabel: string;
+  aabcRateLabel: string;
 }
 
 function uniqueRates(values: number[]) {
   return [...new Set(values)].sort((left, right) => left - right);
+}
+
+function buildRateLabel(values: number[]) {
+  const unique = uniqueRates(values);
+  if (!unique.length) {
+    return "-";
+  }
+
+  return unique
+    .map((value) => `${(value * 100).toFixed((value * 100) % 1 === 0 ? 0 : 1)}`)
+    .join(" / ");
 }
 
 export function buildStatementData(
@@ -88,6 +125,48 @@ export function buildStatementData(
       note: expense.note,
     }));
 
+  const statementAdjustmentRows = store.statementAdjustments
+    .filter((adjustment) => adjustment.month === month && adjustment.memberId === memberId)
+    .map((adjustment) => ({
+      id: adjustment.id,
+      title: adjustment.title,
+      amount: adjustment.amount,
+      note: adjustment.note,
+    }));
+
+  const statementAdjustmentTotal = statementAdjustmentRows.reduce(
+    (sum, adjustment) => sum + adjustment.amount,
+    0,
+  );
+  const templateRows = summary.dealDetails.slice(0, 10).map((detail, index) => ({
+    id: detail.participantId,
+    index: index + 1,
+    memberName: summary.memberName,
+    productName: detail.productName,
+    salePrice: detail.salePrice,
+    closedOn: detail.closedOn,
+    compensationTypeLabel: detail.compensationTypeLabel,
+    appliedRate: detail.appliedRate,
+    reward: detail.reward,
+  }));
+  const overflowRows = summary.dealDetails.slice(10).map((detail, index) => ({
+    id: detail.participantId,
+    index: index + 11,
+    memberName: summary.memberName,
+    productName: detail.productName,
+    salePrice: detail.salePrice,
+    closedOn: detail.closedOn,
+    compensationTypeLabel: detail.compensationTypeLabel,
+    appliedRate: detail.appliedRate,
+    reward: detail.reward,
+  }));
+  const abcRates = summary.dealDetails
+    .filter((detail) => detail.compensationTypeId.startsWith("ABC_"))
+    .map((detail) => detail.appliedRate);
+  const aabcRates = summary.dealDetails
+    .filter((detail) => detail.compensationTypeId.startsWith("AABC_"))
+    .map((detail) => detail.appliedRate);
+
   return {
     memberId: summary.memberId,
     memberName: summary.memberName,
@@ -100,7 +179,9 @@ export function buildStatementData(
     executiveReward: summary.executiveReward,
     adjustment: summary.adjustment,
     personalExpense: summary.personalExpense,
+    statementAdjustmentTotal,
     finalSalary: summary.finalSalary,
+    transferAmount: summary.finalSalary + summary.personalExpense + statementAdjustmentTotal,
     detailRows: summary.dealDetails,
     referralRows: summary.referralDetails,
     groupedRows: Object.values(groupedMap)
@@ -110,6 +191,11 @@ export function buildStatementData(
       }))
       .sort((left, right) => left.compensationTypeLabel.localeCompare(right.compensationTypeLabel)),
     expenseRows,
+    statementAdjustmentRows,
+    templateRows,
+    overflowRows,
+    abcRateLabel: buildRateLabel(abcRates),
+    aabcRateLabel: buildRateLabel(aabcRates),
   };
 }
 
@@ -117,15 +203,16 @@ export function buildMonthlyStatements(store: AppDataStore, month: string): Stat
   const snapshot = buildMonthlyPayroll(store, month);
 
   return snapshot.memberSummaries
-    .filter(
-      (summary) =>
-        summary.monthlySales > 0 ||
-        summary.projectReward !== 0 ||
-        summary.referralReward !== 0 ||
-        summary.executiveReward !== 0 ||
-        summary.adjustment !== 0 ||
-        summary.personalExpense !== 0,
-    )
     .map((summary) => buildStatementData(store, month, summary.memberId))
-    .filter((statement): statement is StatementData => Boolean(statement));
+    .filter((statement): statement is StatementData => Boolean(statement))
+    .filter(
+      (statement) =>
+        statement.monthlySales > 0 ||
+        statement.projectReward !== 0 ||
+        statement.referralReward !== 0 ||
+        statement.executiveReward !== 0 ||
+        statement.adjustment !== 0 ||
+        statement.personalExpense !== 0 ||
+        statement.statementAdjustmentTotal !== 0,
+    );
 }

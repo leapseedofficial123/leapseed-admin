@@ -1,9 +1,7 @@
-import { isMonthInRange } from "@/lib/date";
-import {
-  buildMemberHistory,
-  type CompanyAnalysisResult,
-} from "@/lib/domain/analysis";
-import { buildMonthlyPayroll, getTrackedMonths } from "@/lib/domain/payroll";
+import { getMonthsBetween } from "@/lib/date";
+import { buildMemberHistory, type CompanyAnalysisResult } from "@/lib/domain/analysis";
+import { buildMonthlyPayroll } from "@/lib/domain/payroll";
+import { buildStatementData } from "@/lib/domain/statements";
 import type { AppDataStore } from "@/types/app";
 
 function formatBool(value: boolean) {
@@ -15,15 +13,13 @@ export function buildCompanySummaryCsvRows(
   startMonth: string,
   endMonth: string,
 ) {
-  const months = getTrackedMonths(store).filter((month) =>
-    isMonthInRange(month, startMonth, endMonth),
-  );
-
-  return months.map((month) => {
+  return getMonthsBetween(startMonth, endMonth).map((month) => {
     const snapshot = buildMonthlyPayroll(store, month);
     const dealCount = store.deals.filter(
       (deal) => deal.targetMonth === month && deal.countForCompanyRevenue,
     ).length;
+    const operatingExpense =
+      store.monthlySettings.find((setting) => setting.month === month)?.expense ?? 0;
 
     return {
       月: month,
@@ -34,8 +30,9 @@ export function buildCompanySummaryCsvRows(
       役員報酬合計: snapshot.totalExecutiveReward,
       調整額合計: snapshot.totalAdjustments,
       個人経費合計: snapshot.totalPersonalExpenses,
-      全体給料合計: snapshot.totalSalary,
-      会社経費: snapshot.expenses,
+      固定経費: operatingExpense,
+      会社経費合計: snapshot.expenses,
+      最終給料合計: snapshot.totalSalary,
       利益: snapshot.profit,
       会社売上計上案件数: dealCount,
     };
@@ -45,20 +42,26 @@ export function buildCompanySummaryCsvRows(
 export function buildMonthlyPayrollCsvRows(store: AppDataStore, month: string) {
   const snapshot = buildMonthlyPayroll(store, month);
 
-  return snapshot.memberSummaries.map((summary) => ({
-    対象月: month,
-    メンバー名: summary.memberName,
-    在籍中: formatBool(summary.isActive),
-    役員: formatBool(summary.isExecutive),
-    個人売上合計: summary.monthlySales,
-    適用売上帯: summary.appliedBandLabel,
-    案件報酬合計: summary.projectReward,
-    直紹介報酬: summary.referralReward,
-    役員報酬: summary.executiveReward,
-    調整額: summary.adjustment,
-    個人経費: summary.personalExpense,
-    最終給料: summary.finalSalary,
-  }));
+  return snapshot.memberSummaries.map((summary) => {
+    const statement = buildStatementData(store, month, summary.memberId);
+
+    return {
+      対象月: month,
+      メンバー名: summary.memberName,
+      在籍中: formatBool(summary.isActive),
+      役員: formatBool(summary.isExecutive),
+      個人売上合計: summary.monthlySales,
+      適用売上帯: summary.appliedBandLabel,
+      案件報酬合計: summary.projectReward,
+      直紹介報酬: summary.referralReward,
+      役員報酬: summary.executiveReward,
+      調整額: summary.adjustment,
+      個人経費: summary.personalExpense,
+      明細調整: statement?.statementAdjustmentTotal ?? 0,
+      最終給料: summary.finalSalary,
+      振込予定額: statement?.transferAmount ?? summary.finalSalary,
+    };
+  });
 }
 
 export function buildMemberStatementCsvRows(
@@ -66,84 +69,101 @@ export function buildMemberStatementCsvRows(
   month: string,
   memberId: string,
 ) {
-  const snapshot = buildMonthlyPayroll(store, month);
-  const summary = snapshot.memberSummaries.find((item) => item.memberId === memberId);
+  const statement = buildStatementData(store, month, memberId);
 
-  if (!summary) {
+  if (!statement) {
     return [];
   }
 
   const rows: Array<Record<string, string | number>> = [
     {
-      行種別: "summary",
+      種別: "summary",
       対象月: month,
-      メンバー名: summary.memberName,
+      メンバー名: statement.memberName,
       項目: "個人売上合計",
-      金額: summary.monthlySales,
-      補足1: summary.appliedBandLabel,
+      金額: statement.monthlySales,
+      補足1: statement.appliedBandLabel,
       補足2: "",
     },
     {
-      行種別: "summary",
+      種別: "summary",
       対象月: month,
-      メンバー名: summary.memberName,
+      メンバー名: statement.memberName,
       項目: "案件報酬合計",
-      金額: summary.projectReward,
+      金額: statement.projectReward,
       補足1: "",
       補足2: "",
     },
     {
-      行種別: "summary",
+      種別: "summary",
       対象月: month,
-      メンバー名: summary.memberName,
+      メンバー名: statement.memberName,
       項目: "直紹介報酬",
-      金額: summary.referralReward,
+      金額: statement.referralReward,
       補足1: "",
       補足2: "",
     },
     {
-      行種別: "summary",
+      種別: "summary",
       対象月: month,
-      メンバー名: summary.memberName,
+      メンバー名: statement.memberName,
       項目: "役員報酬",
-      金額: summary.executiveReward,
+      金額: statement.executiveReward,
       補足1: "",
       補足2: "",
     },
     {
-      行種別: "summary",
+      種別: "summary",
       対象月: month,
-      メンバー名: summary.memberName,
+      メンバー名: statement.memberName,
       項目: "調整額",
-      金額: summary.adjustment,
+      金額: statement.adjustment,
       補足1: "",
       補足2: "",
     },
     {
-      行種別: "summary",
+      種別: "summary",
       対象月: month,
-      メンバー名: summary.memberName,
+      メンバー名: statement.memberName,
       項目: "個人経費",
-      金額: summary.personalExpense,
-      補足1: "給与には反映しない参考値",
+      金額: statement.personalExpense,
+      補足1: "給与とは別で管理",
       補足2: "",
     },
     {
-      行種別: "summary",
+      種別: "summary",
       対象月: month,
-      メンバー名: summary.memberName,
+      メンバー名: statement.memberName,
+      項目: "明細調整",
+      金額: statement.statementAdjustmentTotal,
+      補足1: "貸付・返済など",
+      補足2: "",
+    },
+    {
+      種別: "summary",
+      対象月: month,
+      メンバー名: statement.memberName,
       項目: "最終給料",
-      金額: summary.finalSalary,
+      金額: statement.finalSalary,
       補足1: "",
+      補足2: "",
+    },
+    {
+      種別: "summary",
+      対象月: month,
+      メンバー名: statement.memberName,
+      項目: "振込予定額",
+      金額: statement.transferAmount,
+      補足1: "最終給料 + 個人経費 + 明細調整",
       補足2: "",
     },
   ];
 
   rows.push(
-    ...summary.dealDetails.map((detail) => ({
-      行種別: "deal",
+    ...statement.detailRows.map((detail) => ({
+      種別: "deal",
       対象月: month,
-      メンバー名: summary.memberName,
+      メンバー名: statement.memberName,
       項目: detail.productName,
       金額: detail.reward,
       補足1: `${detail.compensationTypeLabel} / ${detail.closedOn}`,
@@ -152,11 +172,11 @@ export function buildMemberStatementCsvRows(
   );
 
   rows.push(
-    ...summary.referralDetails.map((detail) => ({
-      行種別: "referral",
+    ...statement.referralRows.map((detail) => ({
+      種別: "referral",
       対象月: month,
-      メンバー名: summary.memberName,
-      項目: `紹介報酬: ${detail.referredMemberName}`,
+      メンバー名: statement.memberName,
+      項目: `直紹介報酬: ${detail.referredMemberName}`,
       金額: detail.reward,
       補足1: `率 ${detail.rate}`,
       補足2: `被紹介者最終給料 ${detail.referredFinalSalary}`,
@@ -164,17 +184,27 @@ export function buildMemberStatementCsvRows(
   );
 
   rows.push(
-    ...store.memberExpenses
-      .filter((expense) => expense.month === month && expense.memberId === memberId)
-      .map((expense) => ({
-        行種別: "expense",
-        対象月: month,
-        メンバー名: summary.memberName,
-        項目: expense.category || "個人経費",
-        金額: expense.amount,
-        補足1: expense.note,
-        補足2: "個人確定申告用メモ",
-      })),
+    ...statement.expenseRows.map((expense) => ({
+      種別: "expense",
+      対象月: month,
+      メンバー名: statement.memberName,
+      項目: expense.category,
+      金額: expense.amount,
+      補足1: expense.note,
+      補足2: "個人経費",
+    })),
+  );
+
+  rows.push(
+    ...statement.statementAdjustmentRows.map((adjustment) => ({
+      種別: "statement_adjustment",
+      対象月: month,
+      メンバー名: statement.memberName,
+      項目: adjustment.title,
+      金額: adjustment.amount,
+      補足1: adjustment.note,
+      補足2: "明細調整",
+    })),
   );
 
   return rows;
@@ -185,7 +215,7 @@ export function buildMemberHistoryCsvRows(store: AppDataStore, memberId: string)
   const history = buildMemberHistory(store, memberId);
 
   return history.monthlyRows.map((row) => ({
-    メンバー名: member?.name ?? "不明なメンバー",
+    メンバー名: member?.name ?? "未設定メンバー",
     年: row.year,
     月: row.month,
     案件数: row.dealCount,
@@ -213,13 +243,13 @@ export function buildFilteredDealsCsvRows(analysis: CompanyAnalysisResult) {
   return analysis.filteredDeals.map((deal) => ({
     対象月: deal.month,
     成約日: deal.closedOn,
-    案件ID: deal.dealId,
+    成約ID: deal.dealId,
     商品名: deal.productName,
-    案件形態: deal.pattern,
+    成約形態: deal.pattern,
     売価: deal.salePrice,
     会社取り分: deal.companyShare,
-    会社売上へ計上: formatBool(deal.countForCompanyRevenue),
-    取り分入力モード: deal.companyShareMode,
+    会社売上計上: formatBool(deal.countForCompanyRevenue),
+    会社取り分モード: deal.companyShareMode,
     参加メンバー: deal.participantNames.join(" / "),
     報酬区分: deal.compensationTypeLabels.join(" / "),
     参加者報酬合計: deal.participantRewardTotal,
