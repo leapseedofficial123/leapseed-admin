@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 import { Badge, EmptyState, PageSection, StatCard } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
 import { getRangeLabel } from "@/lib/date";
@@ -9,14 +10,8 @@ import { buildMonthlyStatements } from "@/lib/domain/statements";
 import { formatCurrency, formatMonthLabel } from "@/lib/format";
 
 export function DashboardScreen() {
-  const {
-    store,
-    currentSnapshot,
-    selectedMonth,
-    analysisMonths,
-    analysisRangeMode,
-    companyTrend,
-  } = useAppState();
+  const { store, currentSnapshot, selectedMonth, analysisMonths, analysisRangeMode, companyTrend } =
+    useAppState();
   const periodOverview = buildPeriodOverview(store, analysisMonths);
   const statements = buildMonthlyStatements(store, selectedMonth);
   const salaryRanking = [...currentSnapshot.memberSummaries]
@@ -38,13 +33,23 @@ export function DashboardScreen() {
   return (
     <div className="space-y-6">
       <PageSection
-        title="今月の確認導線"
-        description="成約入力、給与明細、最終集計をこの順で使えば月末作業をまとめて進められます。"
+        title="今月のメイン導線"
+        description="日々の運用は、成約一覧で入力して、給与明細で出力し、最後に最終集計で確認する流れです。"
       >
-        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-          <Badge tone="teal">基準月 {formatMonthLabel(selectedMonth)}</Badge>
-          <Badge>{periodModeLabel}</Badge>
-          <span>{getRangeLabel(selectedMonth, analysisRangeMode)}</span>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <BrandLogo width={150} height={78} />
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                <Badge tone="teal">基準月 {formatMonthLabel(selectedMonth)}</Badge>
+                <Badge>{periodModeLabel}</Badge>
+                <span>{getRangeLabel(selectedMonth, analysisRangeMode)}</span>
+              </div>
+              <p className="text-sm text-slate-600">
+                毎月使うのは `成約一覧` `給与明細` `最終集計` の3つです。
+              </p>
+            </div>
+          </div>
         </div>
       </PageSection>
 
@@ -72,14 +77,14 @@ export function DashboardScreen() {
         <StatCard
           label="利益"
           value={formatCurrency(periodOverview.profit)}
-          caption="会社取り分 - 給料合計 - 会社経費"
+          caption="会社取り分 - 全体給料合計 - 会社経費"
         />
       </div>
 
       {currentSnapshot.warnings.length ? (
         <PageSection
           title="確認メモ"
-          description="入力漏れや参照切れなど、計算前に見直したい内容です。"
+          description="計算前に見直した方がよい入力や参照切れです。"
         >
           <div className="space-y-2">
             {currentSnapshot.warnings.map((warning) => (
@@ -94,8 +99,8 @@ export function DashboardScreen() {
         </PageSection>
       ) : null}
 
-      <PageSection title="よく使う画面" description="月末の運用でよく使う順に並べています。">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <PageSection title="毎月使う画面" description="メイン導線だけを並べています。">
+        <div className="grid gap-3 md:grid-cols-3">
           {[
             {
               href: "/deals",
@@ -105,17 +110,12 @@ export function DashboardScreen() {
             {
               href: "/statements",
               title: "給与明細",
-              description: "今月の明細を作成し、個人経費や貸付返済もここで調整します。",
+              description: "個人経費や貸付返済もここで入れながら、明細を出力します。",
             },
             {
               href: "/monthly",
               title: "最終集計",
-              description: "メンバー別の最終給料を確認します。",
-            },
-            {
-              href: "/company",
-              title: "分析",
-              description: "月別や期間別の推移、CSV出力を確認します。",
+              description: "今月の全員分の最終結果を一覧で確認します。",
             },
           ].map((item) => (
             <Link
@@ -132,7 +132,7 @@ export function DashboardScreen() {
 
       <PageSection
         title="今月の給与明細"
-        description="成約を入れると自動で明細対象が並びます。ここから給与明細ページへ進めます。"
+        description="ここで見るのは対象メンバー一覧です。実際のダウンロードは給与明細ページで行います。"
         action={
           <Link
             href="/statements"
@@ -171,13 +171,13 @@ export function DashboardScreen() {
           </div>
         ) : (
           <EmptyState
-            title="今月の給与明細対象はまだありません"
-            description="成約一覧や明細調整を入れると、ここに対象メンバーが表示されます。"
+            title="今月の給与明細対象がありません"
+            description="成約一覧や明細調整を入れると、ここに対象メンバーが並びます。"
           />
         )}
       </PageSection>
 
-      <PageSection title="直近の月次推移" description="売上、会社経費、利益を直近6か月で確認できます。">
+      <PageSection title="直近の月次推移" description="売上、会社経費、利益を直近6か月で見られます。">
         {recentTrend.length ? (
           <div className="space-y-3">
             {recentTrend.map((point) => (
@@ -264,7 +264,10 @@ export function DashboardScreen() {
           {productRanking.length ? (
             <div className="space-y-2">
               {productRanking.map((product, index) => (
-                <div key={product.productId} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <div
+                  key={product.productId}
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+                >
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs text-slate-500">#{index + 1}</p>

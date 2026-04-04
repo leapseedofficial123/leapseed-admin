@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
+import { BrandLogo } from "@/components/brand-logo";
 import {
   EmptyState,
   Input,
@@ -26,10 +26,8 @@ import {
 } from "@/lib/format";
 import { createId } from "@/lib/ids";
 
-const TEMPLATE_WIDTH = 1190;
-const TEMPLATE_HEIGHT = 1684;
-const TEMPLATE_PATH = "/templates/statement-template-page-1.png";
-const MAIN_ROWS_Y = [539, 626, 713, 800, 887, 974, 1061, 1148, 1235, 1322];
+const SHEET_WIDTH = 980;
+const STATEMENT_ROW_COUNT = 10;
 
 interface ExpenseFormState {
   id?: string;
@@ -55,7 +53,7 @@ function emptyAdjustmentForm(): AdjustmentFormState {
   return { memberId: "", title: "", amount: "", note: "" };
 }
 
-function esc(value: string) {
+function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -64,77 +62,64 @@ function esc(value: string) {
     .replace(/'/g, "&#39;");
 }
 
-function left(value: number) {
-  return `${(value / TEMPLATE_WIDTH) * 100}%`;
+function formatRateLabel(value: string) {
+  if (!value || value === "-") {
+    return "-";
+  }
+
+  return value
+    .split(" / ")
+    .map((item) => `${item}%`)
+    .join(" / ");
 }
 
-function top(value: number) {
-  return `${(value / TEMPLATE_HEIGHT) * 100}%`;
+function buildDisplayRows(statement: StatementData) {
+  const rows = statement.detailRows.slice(0, STATEMENT_ROW_COUNT).map((detail, index) => ({
+    key: detail.participantId,
+    index: index + 1,
+    memberName: statement.memberName,
+    productName: detail.productName,
+    salePrice: formatCurrency(detail.salePrice),
+    closedOn: formatDateLabel(detail.closedOn),
+    compensationTypeLabel: detail.compensationTypeLabel,
+    appliedRate: formatPercent(detail.appliedRate),
+    reward: formatCurrency(detail.reward),
+  }));
+
+  while (rows.length < STATEMENT_ROW_COUNT) {
+    rows.push({
+      key: `blank_${rows.length}`,
+      index: rows.length + 1,
+      memberName: "",
+      productName: "",
+      salePrice: "",
+      closedOn: "",
+      compensationTypeLabel: "",
+      appliedRate: "",
+      reward: "",
+    });
+  }
+
+  return rows;
 }
 
-function positionedHtml(
-  content: string,
-  x: number,
-  y: number,
-  width: number,
-  align: "left" | "center" | "right" = "left",
-  extra = "",
-) {
-  return `<div class="t" style="left:${left(x)};top:${top(y)};width:${(width / TEMPLATE_WIDTH) * 100}%;text-align:${align};${extra}">${content}</div>`;
-}
-
-function OverlayText({
-  x,
-  y,
-  width,
-  align = "left",
-  bold,
-  large,
-  children,
-}: {
-  x: number;
-  y: number;
-  width: number;
-  align?: "left" | "center" | "right";
-  bold?: boolean;
-  large?: boolean;
-  children: React.ReactNode;
-}) {
+function SummaryBar({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className={`absolute text-slate-900 ${bold ? "font-semibold" : ""} ${
-        large ? "text-[2vw]" : "text-[1.22vw]"
-      }`}
-      style={{
-        left: left(x),
-        top: top(y),
-        width: `${(width / TEMPLATE_WIDTH) * 100}%`,
-        textAlign: align,
-        lineHeight: 1,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function MiniSummary({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-slate-50 p-4">
-      <p className="text-sm text-slate-500">{label}</p>
+    <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3">
+      <p className="text-xs text-slate-500">{label}</p>
       <p className="mt-2 text-lg font-semibold text-slate-900">{value}</p>
     </div>
   );
 }
 
-function SectionTable({
+function SupplementTable({
   title,
   headers,
   rows,
 }: {
   title: string;
   headers: string[];
-  rows: Array<Array<string | number>>;
+  rows: Array<Array<string>>;
 }) {
   return (
     <div className="mt-6">
@@ -167,85 +152,129 @@ function SectionTable({
   );
 }
 
-function StatementTemplate({ statement }: { statement: StatementData }) {
-  const otherRewardTotal = statement.executiveReward + statement.referralReward;
+function StatementSheet({ statement }: { statement: StatementData }) {
+  const rows = buildDisplayRows(statement);
+  const otherRows = [
+    ["1", "マネージャー報酬", "-", formatCurrency(statement.executiveReward)],
+    ["2", "直紹介報酬", "-", formatCurrency(statement.referralReward)],
+  ];
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div
-        className="relative w-full"
-        style={{ aspectRatio: `${TEMPLATE_WIDTH} / ${TEMPLATE_HEIGHT}` }}
-      >
-        <Image
-          src={TEMPLATE_PATH}
-          alt="給与明細テンプレート"
-          fill
-          sizes="(max-width: 1024px) 100vw, 900px"
-          className="absolute inset-0 h-full w-full object-contain"
-        />
-        <OverlayText x={873} y={151} width={165} align="right" bold>
-          {statement.aabcRateLabel}
-        </OverlayText>
-        <OverlayText x={873} y={235} width={165} align="right" bold>
-          {statement.abcRateLabel}
-        </OverlayText>
-        <OverlayText x={898} y={321} width={220} align="center" large bold>
-          {formatCurrency(statement.projectReward)}
-        </OverlayText>
-
-        {statement.templateRows.map((row, index) => (
-          <div key={row.id}>
-            <OverlayText x={33} y={MAIN_ROWS_Y[index]} width={42} align="center">
-              {row.index}
-            </OverlayText>
-            <OverlayText x={82} y={MAIN_ROWS_Y[index]} width={177}>
-              {row.memberName}
-            </OverlayText>
-            <OverlayText x={275} y={MAIN_ROWS_Y[index]} width={263}>
-              {row.productName}
-            </OverlayText>
-            <OverlayText x={541} y={MAIN_ROWS_Y[index]} width={165} align="right">
-              {formatCurrency(row.salePrice)}
-            </OverlayText>
-            <OverlayText x={702} y={MAIN_ROWS_Y[index]} width={147} align="center">
-              {formatDateLabel(row.closedOn)}
-            </OverlayText>
-            <OverlayText x={846} y={MAIN_ROWS_Y[index]} width={148} align="center">
-              {row.compensationTypeLabel}
-            </OverlayText>
-            <OverlayText x={995} y={MAIN_ROWS_Y[index]} width={58} align="center">
-              {formatPercent(row.appliedRate)}
-            </OverlayText>
-            <OverlayText x={1060} y={MAIN_ROWS_Y[index]} width={109} align="right" bold>
-              {formatCurrency(row.reward)}
-            </OverlayText>
+    <div className="overflow-x-auto">
+      <div className="mx-auto rounded-[28px] border border-sky-100 bg-white p-8 shadow-sm" style={{ width: SHEET_WIDTH }}>
+        <div className="grid grid-cols-[240px_1fr_230px] items-start gap-6">
+          <div className="pt-1">
+            <BrandLogo width={170} height={92} priority />
           </div>
-        ))}
+          <div className="pt-4 text-center">
+            <p className="text-xs uppercase tracking-[0.32em] text-slate-400">Statement</p>
+            <h2 className="mt-3 text-[28px] font-semibold tracking-[0.08em] text-slate-900">報酬明細</h2>
+            <p className="mt-3 text-sm text-slate-500">
+              {formatMonthLabel(statement.month)} / 発行日 {formatDateLabel(statement.issueDate)}
+            </p>
+          </div>
+          <div className="space-y-3">
+            <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-600">AABC 報酬率</span>
+                <span className="font-semibold text-slate-900">{formatRateLabel(statement.aabcRateLabel)}</span>
+              </div>
+            </div>
+            <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-600">ABC 報酬率</span>
+                <span className="font-semibold text-slate-900">{formatRateLabel(statement.abcRateLabel)}</span>
+              </div>
+            </div>
+            <div className="rounded-2xl bg-[#b6caee] px-4 py-5 text-center">
+              <p className="text-xs tracking-[0.24em] text-slate-600">案件報酬合計</p>
+              <p className="mt-2 text-[26px] font-semibold text-slate-900">
+                {formatCurrency(statement.projectReward)}
+              </p>
+            </div>
+          </div>
+        </div>
 
-        <OverlayText x={431} y={1432} width={250} align="center" bold>
-          {formatCurrency(otherRewardTotal)}
-        </OverlayText>
-        <OverlayText x={93} y={1495} width={200}>
-          マネージャー報酬
-        </OverlayText>
-        <OverlayText x={322} y={1495} width={132} align="center">
-          -
-        </OverlayText>
-        <OverlayText x={465} y={1495} width={194} align="right" bold>
-          {formatCurrency(statement.executiveReward)}
-        </OverlayText>
-        <OverlayText x={93} y={1550} width={200}>
-          直紹介報酬
-        </OverlayText>
-        <OverlayText x={322} y={1550} width={132} align="center">
-          -
-        </OverlayText>
-        <OverlayText x={465} y={1550} width={194} align="right" bold>
-          {formatCurrency(statement.referralReward)}
-        </OverlayText>
-        <OverlayText x={420} y={1635} width={355} align="center" large bold>
-          {formatCurrency(statement.finalSalary)}
-        </OverlayText>
+        <div className="mt-8">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-900">営業報酬（A or B or AC）</p>
+            <p className="text-sm text-slate-500">{statement.memberName}</p>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-sky-100">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-[#d6eefc] text-slate-700">
+                <tr>
+                  <th className="px-3 py-3">No.</th>
+                  <th className="px-3 py-3">名前</th>
+                  <th className="px-3 py-3">商材</th>
+                  <th className="px-3 py-3">金額</th>
+                  <th className="px-3 py-3">着金日</th>
+                  <th className="px-3 py-3">営業形態</th>
+                  <th className="px-3 py-3">%</th>
+                  <th className="px-3 py-3">報酬</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr
+                    key={row.key}
+                    className={index % 2 === 0 ? "bg-[#eef9ff]" : "bg-white"}
+                  >
+                    <td className="px-3 py-3">{row.index}</td>
+                    <td className="px-3 py-3">{row.memberName}</td>
+                    <td className="px-3 py-3">{row.productName}</td>
+                    <td className="px-3 py-3">{row.salePrice}</td>
+                    <td className="px-3 py-3">{row.closedOn}</td>
+                    <td className="px-3 py-3">{row.compensationTypeLabel}</td>
+                    <td className="px-3 py-3">{row.appliedRate}</td>
+                    <td className="px-3 py-3 font-semibold text-slate-900">{row.reward}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_260px]">
+          <div>
+            <p className="mb-3 text-sm font-semibold text-slate-900">その他報酬</p>
+            <div className="overflow-hidden rounded-2xl border border-sky-100">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-[#d6eefc] text-slate-700">
+                  <tr>
+                    <th className="px-3 py-3">No.</th>
+                    <th className="px-3 py-3">名前</th>
+                    <th className="px-3 py-3">報酬率</th>
+                    <th className="px-3 py-3">報酬</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {otherRows.map((row, index) => (
+                    <tr key={row[0]} className={index % 2 === 0 ? "bg-[#eef9ff]" : "bg-white"}>
+                      {row.map((cell) => (
+                        <td key={`${row[0]}_${cell}`} className="px-3 py-3">
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <SummaryBar label="売上帯" value={statement.appliedBandLabel} />
+            <SummaryBar label="調整額" value={formatCurrency(statement.adjustment)} />
+            <SummaryBar label="振込予定額" value={formatCurrency(statement.transferAmount)} />
+          </div>
+        </div>
+
+        <div className="mt-8 rounded-[20px] bg-[#84c9ec] px-6 py-5 text-center text-slate-900">
+          <p className="text-sm tracking-[0.22em] text-slate-700">月報酬総額</p>
+          <p className="mt-2 text-[34px] font-semibold">{formatCurrency(statement.finalSalary)}</p>
+        </div>
       </div>
     </div>
   );
@@ -254,16 +283,16 @@ function StatementTemplate({ statement }: { statement: StatementData }) {
 function StatementSupplement({ statement }: { statement: StatementData }) {
   const hasSupplement =
     statement.overflowRows.length > 0 ||
-    statement.adjustment !== 0 ||
     statement.expenseRows.length > 0 ||
-    statement.statementAdjustmentRows.length > 0;
+    statement.statementAdjustmentRows.length > 0 ||
+    statement.adjustment !== 0;
 
   if (!hasSupplement) {
     return null;
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Supplement</p>
@@ -281,20 +310,17 @@ function StatementSupplement({ statement }: { statement: StatementData }) {
       </div>
 
       <div className="mt-5 grid gap-4 md:grid-cols-3">
-        <MiniSummary label="調整額" value={formatCurrency(statement.adjustment)} />
-        <MiniSummary label="個人経費" value={formatCurrency(statement.personalExpense)} />
-        <MiniSummary
-          label="明細調整"
-          value={formatSignedCurrency(statement.statementAdjustmentTotal)}
-        />
+        <SummaryBar label="調整額" value={formatCurrency(statement.adjustment)} />
+        <SummaryBar label="個人経費" value={formatCurrency(statement.personalExpense)} />
+        <SummaryBar label="明細調整" value={formatSignedCurrency(statement.statementAdjustmentTotal)} />
       </div>
 
       {statement.overflowRows.length ? (
-        <SectionTable
+        <SupplementTable
           title="テンプレート外の案件内訳"
-          headers={["No.", "商品", "成約日", "形態", "売価", "率", "報酬"]}
+          headers={["No.", "商材", "着金日", "営業形態", "金額", "%", "報酬"]}
           rows={statement.overflowRows.map((row) => [
-            row.index,
+            String(row.index),
             row.productName,
             formatDateLabel(row.closedOn),
             row.compensationTypeLabel,
@@ -306,7 +332,7 @@ function StatementSupplement({ statement }: { statement: StatementData }) {
       ) : null}
 
       {statement.expenseRows.length ? (
-        <SectionTable
+        <SupplementTable
           title="個人経費"
           headers={["項目", "メモ", "金額"]}
           rows={statement.expenseRows.map((row) => [
@@ -318,7 +344,7 @@ function StatementSupplement({ statement }: { statement: StatementData }) {
       ) : null}
 
       {statement.statementAdjustmentRows.length ? (
-        <SectionTable
+        <SupplementTable
           title="明細調整"
           headers={["項目", "メモ", "金額"]}
           rows={statement.statementAdjustmentRows.map((row) => [
@@ -332,7 +358,7 @@ function StatementSupplement({ statement }: { statement: StatementData }) {
   );
 }
 
-function tableHtml(title: string, headers: string[], rows: Array<Array<string | number>>) {
+function printTableHtml(title: string, headers: string[], rows: Array<Array<string>>) {
   return `
     <section class="section">
       <h3>${title}</h3>
@@ -344,116 +370,191 @@ function tableHtml(title: string, headers: string[], rows: Array<Array<string | 
   `;
 }
 
-function printableHtml(statement: StatementData, origin: string) {
-  const otherRewardTotal = statement.executiveReward + statement.referralReward;
-  const rows = statement.templateRows
-    .map(
-      (row, index) => `
-        ${positionedHtml(String(row.index), 33, MAIN_ROWS_Y[index], 42, "center")}
-        ${positionedHtml(esc(row.memberName), 82, MAIN_ROWS_Y[index], 177)}
-        ${positionedHtml(esc(row.productName), 275, MAIN_ROWS_Y[index], 263)}
-        ${positionedHtml(formatCurrency(row.salePrice), 541, MAIN_ROWS_Y[index], 165, "right")}
-        ${positionedHtml(formatDateLabel(row.closedOn), 702, MAIN_ROWS_Y[index], 147, "center")}
-        ${positionedHtml(esc(row.compensationTypeLabel), 846, MAIN_ROWS_Y[index], 148, "center")}
-        ${positionedHtml(formatPercent(row.appliedRate), 995, MAIN_ROWS_Y[index], 58, "center")}
-        ${positionedHtml(formatCurrency(row.reward), 1060, MAIN_ROWS_Y[index], 109, "right", "font-weight:700;")}
-      `,
-    )
-    .join("");
-
-  const supplement =
-    statement.overflowRows.length ||
-    statement.adjustment !== 0 ||
-    statement.expenseRows.length ||
-    statement.statementAdjustmentRows.length
-      ? `
-        <div class="page supplement">
-          <div class="head">
-            <div>
-              <p class="eyebrow">Supplement</p>
-              <h2>給与明細の補足</h2>
-              <p>${esc(statement.memberName)} / ${formatMonthLabel(statement.month)}</p>
-            </div>
-            <div class="box">
-              <p>振込予定額</p>
-              <strong>${formatCurrency(statement.transferAmount)}</strong>
-            </div>
-          </div>
-          <div class="grid">
-            <div class="card"><p>調整額</p><strong>${formatCurrency(statement.adjustment)}</strong></div>
-            <div class="card"><p>個人経費</p><strong>${formatCurrency(statement.personalExpense)}</strong></div>
-            <div class="card"><p>明細調整</p><strong>${formatSignedCurrency(statement.statementAdjustmentTotal)}</strong></div>
-          </div>
-          ${statement.overflowRows.length ? tableHtml("テンプレート外の案件内訳", ["No.", "商品", "成約日", "形態", "売価", "率", "報酬"], statement.overflowRows.map((row) => [row.index, esc(row.productName), formatDateLabel(row.closedOn), esc(row.compensationTypeLabel), formatCurrency(row.salePrice), formatPercent(row.appliedRate), formatCurrency(row.reward)])) : ""}
-          ${statement.expenseRows.length ? tableHtml("個人経費", ["項目", "メモ", "金額"], statement.expenseRows.map((row) => [esc(row.category), esc(row.note || "メモなし"), formatCurrency(row.amount)])) : ""}
-          ${statement.statementAdjustmentRows.length ? tableHtml("明細調整", ["項目", "メモ", "金額"], statement.statementAdjustmentRows.map((row) => [esc(row.title), esc(row.note || "メモなし"), formatSignedCurrency(row.amount)])) : ""}
-        </div>
-      `
-      : "";
+function renderStatementSheetHtml(statement: StatementData, origin: string) {
+  const rows = buildDisplayRows(statement);
+  const otherRows = [
+    ["1", "マネージャー報酬", "-", formatCurrency(statement.executiveReward)],
+    ["2", "直紹介報酬", "-", formatCurrency(statement.referralReward)],
+  ];
 
   return `
-    <div class="page template">
-      <img class="bg" src="${origin}${TEMPLATE_PATH}" alt="statement template" />
-      ${positionedHtml(esc(statement.aabcRateLabel), 873, 151, 165, "right", "font-weight:700;")}
-      ${positionedHtml(esc(statement.abcRateLabel), 873, 235, 165, "right", "font-weight:700;")}
-      ${positionedHtml(formatCurrency(statement.projectReward), 898, 321, 220, "center", "font-size:20px;font-weight:700;")}
-      ${rows}
-      ${positionedHtml(formatCurrency(otherRewardTotal), 431, 1432, 250, "center", "font-weight:700;")}
-      ${positionedHtml("マネージャー報酬", 93, 1495, 200)}
-      ${positionedHtml("-", 322, 1495, 132, "center")}
-      ${positionedHtml(formatCurrency(statement.executiveReward), 465, 1495, 194, "right", "font-weight:700;")}
-      ${positionedHtml("直紹介報酬", 93, 1550, 200)}
-      ${positionedHtml("-", 322, 1550, 132, "center")}
-      ${positionedHtml(formatCurrency(statement.referralReward), 465, 1550, 194, "right", "font-weight:700;")}
-      ${positionedHtml(formatCurrency(statement.finalSalary), 420, 1635, 355, "center", "font-size:24px;font-weight:700;")}
+    <div class="sheet">
+      <div class="sheet-head">
+        <div class="logo-wrap"><img class="logo" src="${origin}/branding/leapseed-logo.png" alt="LeapSeed" /></div>
+        <div class="title-wrap">
+          <p class="eyebrow">Statement</p>
+          <h2>報酬明細</h2>
+          <p>${formatMonthLabel(statement.month)} / 発行日 ${formatDateLabel(statement.issueDate)}</p>
+        </div>
+        <div class="rate-stack">
+          <div class="rate-box"><span>AABC 報酬率</span><strong>${formatRateLabel(statement.aabcRateLabel)}</strong></div>
+          <div class="rate-box"><span>ABC 報酬率</span><strong>${formatRateLabel(statement.abcRateLabel)}</strong></div>
+          <div class="amount-box"><span>案件報酬合計</span><strong>${formatCurrency(statement.projectReward)}</strong></div>
+        </div>
+      </div>
+
+      <section class="section">
+        <div class="section-head"><strong>営業報酬（A or B or AC）</strong><span>${escapeHtml(statement.memberName)}</span></div>
+        <table class="sheet-table">
+          <thead>
+            <tr>
+              <th>No.</th><th>名前</th><th>商材</th><th>金額</th><th>着金日</th><th>営業形態</th><th>%</th><th>報酬</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map(
+                (row, index) => `
+                  <tr class="${index % 2 === 0 ? "blue-row" : "white-row"}">
+                    <td>${row.index}</td>
+                    <td>${escapeHtml(row.memberName)}</td>
+                    <td>${escapeHtml(row.productName)}</td>
+                    <td>${row.salePrice}</td>
+                    <td>${row.closedOn}</td>
+                    <td>${escapeHtml(row.compensationTypeLabel)}</td>
+                    <td>${row.appliedRate}</td>
+                    <td><strong>${row.reward}</strong></td>
+                  </tr>
+                `,
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </section>
+
+      <div class="bottom-grid">
+        <section class="section">
+          <strong>その他報酬</strong>
+          <table class="sheet-table small">
+            <thead>
+              <tr>
+                <th>No.</th><th>名前</th><th>報酬率</th><th>報酬</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${otherRows
+                .map(
+                  (row, index) => `
+                    <tr class="${index % 2 === 0 ? "blue-row" : "white-row"}">
+                      ${row.map((cell) => `<td>${cell}</td>`).join("")}
+                    </tr>
+                  `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </section>
+
+        <div class="summary-col">
+          <div class="summary-box"><span>売上帯</span><strong>${escapeHtml(statement.appliedBandLabel)}</strong></div>
+          <div class="summary-box"><span>調整額</span><strong>${formatCurrency(statement.adjustment)}</strong></div>
+          <div class="summary-box"><span>振込予定額</span><strong>${formatCurrency(statement.transferAmount)}</strong></div>
+        </div>
+      </div>
+
+      <div class="final-box">
+        <span>月報酬総額</span>
+        <strong>${formatCurrency(statement.finalSalary)}</strong>
+      </div>
     </div>
-    ${supplement}
+  `;
+}
+
+function renderSupplementHtml(statement: StatementData) {
+  const hasSupplement =
+    statement.overflowRows.length > 0 ||
+    statement.expenseRows.length > 0 ||
+    statement.statementAdjustmentRows.length > 0 ||
+    statement.adjustment !== 0;
+
+  if (!hasSupplement) {
+    return "";
+  }
+
+  return `
+    <div class="sheet supplement-sheet">
+      <div class="supplement-head">
+        <div>
+          <p class="eyebrow">Supplement</p>
+          <h2>給与明細の補足</h2>
+          <p>${escapeHtml(statement.memberName)} / ${formatMonthLabel(statement.month)}</p>
+        </div>
+        <div class="summary-box right">
+          <span>振込予定額</span>
+          <strong>${formatCurrency(statement.transferAmount)}</strong>
+        </div>
+      </div>
+
+      <div class="supplement-grid">
+        <div class="summary-box"><span>調整額</span><strong>${formatCurrency(statement.adjustment)}</strong></div>
+        <div class="summary-box"><span>個人経費</span><strong>${formatCurrency(statement.personalExpense)}</strong></div>
+        <div class="summary-box"><span>明細調整</span><strong>${formatSignedCurrency(statement.statementAdjustmentTotal)}</strong></div>
+      </div>
+
+      ${statement.overflowRows.length ? printTableHtml("テンプレート外の案件内訳", ["No.", "商材", "着金日", "営業形態", "金額", "%", "報酬"], statement.overflowRows.map((row) => [String(row.index), escapeHtml(row.productName), formatDateLabel(row.closedOn), escapeHtml(row.compensationTypeLabel), formatCurrency(row.salePrice), formatPercent(row.appliedRate), formatCurrency(row.reward)])) : ""}
+      ${statement.expenseRows.length ? printTableHtml("個人経費", ["項目", "メモ", "金額"], statement.expenseRows.map((row) => [escapeHtml(row.category), escapeHtml(row.note || "メモなし"), formatCurrency(row.amount)])) : ""}
+      ${statement.statementAdjustmentRows.length ? printTableHtml("明細調整", ["項目", "メモ", "金額"], statement.statementAdjustmentRows.map((row) => [escapeHtml(row.title), escapeHtml(row.note || "メモなし"), formatSignedCurrency(row.amount)])) : ""}
+    </div>
   `;
 }
 
 function openPrintWindow(title: string, statements: StatementData[]) {
-  const nextWindow = window.open("", "_blank", "width=1200,height=900");
+  const nextWindow = window.open("", "_blank", "width=1400,height=900");
   if (!nextWindow) {
     return;
   }
 
-  const origin = window.location.origin;
   nextWindow.document.write(`
     <html lang="ja">
       <head>
         <meta charset="utf-8" />
-        <title>${esc(title)}</title>
+        <title>${escapeHtml(title)}</title>
+        <base href="${origin}/" />
         <style>
-          @page { size: A4; margin: 8mm; }
+          @page { size: A4; margin: 10mm; }
           body { margin: 0; font-family: "Yu Gothic", "Yu Gothic UI", sans-serif; color: #0f172a; background: white; }
-          .page { width: 194mm; margin: 0 auto 8mm; page-break-after: always; }
-          .template { position: relative; aspect-ratio: ${TEMPLATE_WIDTH} / ${TEMPLATE_HEIGHT}; }
-          .bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-          .t { position: absolute; font-size: 11px; line-height: 1; }
-          .supplement { border: 1px solid #cbd5e1; border-radius: 14px; padding: 18px; box-sizing: border-box; }
-          .head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
-          .head h2 { margin: 8px 0 4px; font-size: 22px; }
-          .head p { margin: 0; color: #475569; font-size: 12px; }
-          .eyebrow { letter-spacing: .2em; text-transform: uppercase; }
-          .box { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 12px; padding: 12px; min-width: 180px; text-align: right; }
-          .box strong { display: block; margin-top: 8px; font-size: 20px; color: #0f172a; }
-          .grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-top: 18px; }
-          .card { border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px; padding: 12px; }
-          .card p { margin: 0; font-size: 12px; color: #475569; }
-          .card strong { display: block; margin-top: 8px; font-size: 18px; }
-          .section { margin-top: 24px; }
-          .section h3 { margin: 0 0 10px; font-size: 15px; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          th, td { border-top: 1px solid #e2e8f0; padding: 8px 6px; text-align: left; vertical-align: top; }
-          thead th { border-top: none; color: #475569; }
+          .sheet { width: 190mm; margin: 0 auto 8mm; border: 1px solid #d8eaf7; border-radius: 28px; padding: 9mm; box-sizing: border-box; page-break-after: always; }
+          .sheet-head { display: grid; grid-template-columns: 46mm 1fr 44mm; gap: 6mm; align-items: start; }
+          .logo { width: 42mm; height: auto; }
+          .title-wrap { padding-top: 3mm; text-align: center; }
+          .title-wrap h2 { margin: 3mm 0 0; font-size: 22px; letter-spacing: .08em; }
+          .title-wrap p { margin: 3mm 0 0; font-size: 11px; color: #64748b; }
+          .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: .28em; font-size: 10px; color: #94a3b8; }
+          .rate-stack { display: grid; gap: 3mm; }
+          .rate-box, .summary-box { border: 1px solid #d8eaf7; background: #f0f9ff; border-radius: 12px; padding: 3mm; }
+          .rate-box { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+          .amount-box { background: #b6caee; border-radius: 16px; padding: 4mm 3mm; text-align: center; }
+          .amount-box span, .summary-box span, .final-box span { display: block; font-size: 10px; color: #475569; letter-spacing: .18em; }
+          .amount-box strong { display: block; margin-top: 2mm; font-size: 22px; color: #0f172a; }
+          .section { margin-top: 7mm; }
+          .section-head { display: flex; justify-content: space-between; gap: 4mm; margin-bottom: 2.5mm; font-size: 11px; }
+          table { width: 100%; border-collapse: collapse; font-size: 11px; }
+          th, td { padding: 2.2mm 2.5mm; text-align: left; vertical-align: top; }
+          thead th { background: #d6eefc; color: #334155; font-weight: 600; }
+          .blue-row td { background: #eef9ff; }
+          .white-row td { background: #ffffff; }
+          .sheet-table { border: 1px solid #d8eaf7; border-radius: 16px; overflow: hidden; }
+          .bottom-grid { display: grid; grid-template-columns: 1fr 48mm; gap: 6mm; margin-top: 7mm; }
+          .summary-col { display: grid; gap: 3mm; }
+          .summary-box strong { display: block; margin-top: 2mm; font-size: 16px; color: #0f172a; }
+          .summary-box.right { text-align: right; }
+          .final-box { margin-top: 7mm; border-radius: 20px; background: #84c9ec; padding: 4mm; text-align: center; }
+          .final-box strong { display: block; margin-top: 2mm; font-size: 28px; color: #0f172a; }
+          .supplement-head { display: flex; justify-content: space-between; gap: 6mm; align-items: start; }
+          .supplement-head h2 { margin: 3mm 0 0; font-size: 22px; }
+          .supplement-head p { margin: 3mm 0 0; font-size: 11px; color: #64748b; }
+          .supplement-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 4mm; margin-top: 6mm; }
+          .section h3 { margin: 0 0 2.5mm; font-size: 13px; }
         </style>
       </head>
-      <body>${statements.map((statement) => printableHtml(statement, origin)).join("")}</body>
+      <body>${statements
+        .map((statement) => renderStatementSheetHtml(statement, origin) + renderSupplementHtml(statement))
+        .join("")}</body>
     </html>
   `);
   nextWindow.document.close();
   nextWindow.focus();
-  window.setTimeout(() => nextWindow.print(), 300);
+  window.setTimeout(() => nextWindow.print(), 250);
 }
 
 export function StatementsScreen() {
@@ -592,7 +693,7 @@ export function StatementsScreen() {
 
       <PageSection
         title="今月の給与明細"
-        description="1枚目はテンプレートと同じレイアウトで、入りきらない内容は補足ページへまとめます。"
+        description="ここが個人ごとの給与明細を出す画面です。ダウンロードや印刷はここから行います。"
         action={
           <button
             type="button"
@@ -695,7 +796,7 @@ export function StatementsScreen() {
       <OverlayPanel
         open={Boolean(preview)}
         title={preview ? `${preview.memberName} の給与明細` : "給与明細"}
-        description="テンプレート1枚目と補足ページをまとめて確認できます。"
+        description="このプレビューのまま、PDF保存や印刷へ進めます。"
         onClose={() => setPreviewId("")}
       >
         {preview ? (
@@ -704,7 +805,7 @@ export function StatementsScreen() {
               <button type="button" onClick={() => openPrintWindow(`${preview.memberName}-${preview.month}-給与明細`, [preview])} className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800">PDF保存 / 印刷</button>
               <button type="button" onClick={() => downloadCsv(`leapseed-statement-${selectedMonth}-${preview.memberName}.csv`, buildMemberStatementCsvRows(store, selectedMonth, preview.memberId))} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100">明細CSV</button>
             </div>
-            <StatementTemplate statement={preview} />
+            <StatementSheet statement={preview} />
             <StatementSupplement statement={preview} />
           </div>
         ) : null}

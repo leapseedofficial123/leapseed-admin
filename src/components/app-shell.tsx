@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { BrandLogo } from "@/components/brand-logo";
 import { useAppState } from "@/context/app-state-context";
 import { ANALYSIS_RANGE_OPTIONS, APP_TITLE } from "@/lib/constants";
 import { getRangeLabel } from "@/lib/date";
@@ -15,11 +16,11 @@ const primaryItems = [
   { href: "/deals", label: "成約一覧" },
   { href: "/statements", label: "給与明細" },
   { href: "/monthly", label: "最終集計" },
-  { href: "/products", label: "商品管理" },
-  { href: "/company", label: "分析" },
 ];
 
 const secondaryItems = [
+  { href: "/products", label: "商品管理" },
+  { href: "/company", label: "分析" },
   { href: "/members", label: "メンバー管理" },
   { href: "/referrals", label: "紹介関係" },
   { href: "/executives", label: "役員設定" },
@@ -83,12 +84,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-200 px-5 py-5">
-        <p className="text-xs font-medium uppercase tracking-[0.24em] text-slate-500">
-          LeapSeed Payroll
-        </p>
-        <h1 className="mt-2 text-xl font-semibold tracking-tight text-slate-900">{APP_TITLE}</h1>
+        <BrandLogo width={150} height={78} priority />
+        <h1 className="mt-3 text-lg font-semibold tracking-tight text-slate-900">{APP_TITLE}</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          よく使う成約入力と給与明細を上にまとめ、初期設定系は下に分けています。
+          毎月使う画面を上に、設定や分析を下にまとめています。
         </p>
       </div>
 
@@ -179,11 +178,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             ) : null}
 
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
-                LeapSeed Payroll
-              </p>
-              <p className="mt-1 font-semibold text-slate-900">{APP_TITLE}</p>
+            <div className="flex items-center gap-3">
+              <BrandLogo width={96} height={48} />
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
+                  LeapSeed Payroll
+                </p>
+                <p className="mt-1 font-semibold text-slate-900">{APP_TITLE}</p>
+              </div>
             </div>
           </div>
 
@@ -200,7 +202,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="fixed inset-x-0 bottom-0 top-16 z-40">
           <button
             type="button"
-            aria-label="メニューの外側を閉じる"
+            aria-label="メニューを閉じる"
             onClick={() => setMenuOpen(false)}
             className="absolute inset-0 bg-slate-900/35"
           />
