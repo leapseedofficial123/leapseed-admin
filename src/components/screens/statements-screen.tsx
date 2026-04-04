@@ -13,7 +13,6 @@ import {
 } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
 import { downloadCsv } from "@/lib/csv";
-import { getToday } from "@/lib/date";
 import { buildMemberStatementCsvRows } from "@/lib/domain/exports";
 import { buildMonthlyStatements, type StatementData } from "@/lib/domain/statements";
 import {
@@ -52,34 +51,6 @@ function emptyExpenseForm(): ExpenseFormState {
 
 function emptyAdjustmentForm(): AdjustmentFormState {
   return { memberId: "", title: "", amount: "", note: "" };
-}
-
-function buildBlankStatementPreview(month: string): StatementData {
-  return {
-    memberId: "__template__",
-    memberName: "",
-    month,
-    issueDate: getToday(),
-    appliedBandLabel: "-",
-    monthlySales: 0,
-    projectReward: 0,
-    referralReward: 0,
-    executiveReward: 0,
-    adjustment: 0,
-    personalExpense: 0,
-    statementAdjustmentTotal: 0,
-    finalSalary: 0,
-    transferAmount: 0,
-    detailRows: [],
-    referralRows: [],
-    groupedRows: [],
-    expenseRows: [],
-    statementAdjustmentRows: [],
-    templateRows: [],
-    overflowRows: [],
-    abcRateLabel: "-",
-    aabcRateLabel: "-",
-  };
 }
 
 function escapeHtml(value: string) {
@@ -646,14 +617,12 @@ export function StatementsScreen() {
   const monthAdjustments = store.statementAdjustments.filter((adjustment) => adjustment.month === selectedMonth);
   const totalTransferAmount = statements.reduce((sum, statement) => sum + statement.transferAmount, 0);
   const [previewId, setPreviewId] = useState("");
-  const [showTemplatePreview, setShowTemplatePreview] = useState(false);
   const [panelMode, setPanelMode] = useState<"expense" | "adjustment" | null>(null);
   const [expenseForm, setExpenseForm] = useState<ExpenseFormState>(emptyExpenseForm);
   const [adjustmentForm, setAdjustmentForm] = useState<AdjustmentFormState>(emptyAdjustmentForm);
   const [error, setError] = useState("");
   const preview = statements.find((statement) => statement.memberId === previewId) ?? null;
-  const templatePreview = useMemo(() => buildBlankStatementPreview(selectedMonth), [selectedMonth]);
-  const activePreview = preview ?? (showTemplatePreview ? templatePreview : null);
+  const activePreview = preview;
 
   const closePanel = () => {
     setPanelMode(null);
@@ -772,34 +741,14 @@ export function StatementsScreen() {
         title="今月の給与明細"
         description="ここが個人ごとの給与明細を出す画面です。ダウンロードや印刷はここから行います。"
         action={
-          <details className="group relative">
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100">
-              明細操作
-              <span className="text-xs text-slate-400 transition group-open:rotate-180">▼</span>
-            </summary>
-            <div className="absolute right-0 z-20 mt-2 w-[260px] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
-              <button
-                type="button"
-                onClick={() => {
-                  setPreviewId("");
-                  setShowTemplatePreview(true);
-                }}
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
-              >
-                <span>空テンプレートを開く</span>
-                <span className="text-xs text-slate-400">プレビュー</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => openPrintWindow(`${selectedMonth}-給与明細一括`, statements)}
-                disabled={!statements.length}
-                className="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <span>今月分を一括でPDF保存 / 印刷</span>
-                <span className="text-xs text-slate-400">出力</span>
-              </button>
-            </div>
-          </details>
+          <button
+            type="button"
+            onClick={() => openPrintWindow(`${selectedMonth}-給与明細一括`, statements)}
+            disabled={!statements.length}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            今月分を一括でPDF保存 / 印刷
+          </button>
         }
       >
         {statements.length ? (
@@ -819,13 +768,10 @@ export function StatementsScreen() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowTemplatePreview(false);
-                        setPreviewId(statement.memberId);
-                      }}
+                      onClick={() => setPreviewId(statement.memberId)}
                       className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
                     >
-                      プレビュー
+                      明細を見る
                     </button>
                     <button type="button" onClick={() => openPrintWindow(`${statement.memberName}-${statement.month}-給与明細`, [statement])} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white">PDF保存 / 印刷</button>
                     <button type="button" onClick={() => downloadCsv(`leapseed-statement-${selectedMonth}-${statement.memberName}.csv`, buildMemberStatementCsvRows(store, selectedMonth, statement.memberId))} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white">明細CSV</button>
@@ -901,21 +847,10 @@ export function StatementsScreen() {
 
       <OverlayPanel
         open={Boolean(activePreview)}
-        title={
-          activePreview
-            ? activePreview.memberId === "__template__"
-              ? "空の給与明細テンプレート"
-              : `${activePreview.memberName} の給与明細`
-            : "給与明細"
-        }
-        description={
-          activePreview?.memberId === "__template__"
-            ? "何も入力していない状態の見本テンプレートです。"
-            : "このプレビューのまま、PDF保存や印刷へ進めます。"
-        }
+        title={activePreview ? `${activePreview.memberName} の給与明細` : "給与明細"}
+        description="この画面のまま、PDF保存や印刷へ進めます。"
         onClose={() => {
           setPreviewId("");
-          setShowTemplatePreview(false);
         }}
         panelClassName="max-w-[min(96vw,1080px)]"
       >
@@ -926,9 +861,7 @@ export function StatementsScreen() {
                 type="button"
                 onClick={() =>
                   openPrintWindow(
-                    activePreview.memberId === "__template__"
-                      ? `${selectedMonth}-給与明細テンプレート`
-                      : `${activePreview.memberName}-${activePreview.month}-給与明細`,
+                    `${activePreview.memberName}-${activePreview.month}-給与明細`,
                     [activePreview],
                   )
                 }
@@ -936,20 +869,18 @@ export function StatementsScreen() {
               >
                 PDF保存 / 印刷
               </button>
-              {activePreview.memberId !== "__template__" ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    downloadCsv(
-                      `leapseed-statement-${selectedMonth}-${activePreview.memberName}.csv`,
-                      buildMemberStatementCsvRows(store, selectedMonth, activePreview.memberId),
-                    )
-                  }
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
-                >
-                  明細CSV
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() =>
+                  downloadCsv(
+                    `leapseed-statement-${selectedMonth}-${activePreview.memberName}.csv`,
+                    buildMemberStatementCsvRows(store, selectedMonth, activePreview.memberId),
+                  )
+                }
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+              >
+                明細CSV
+              </button>
             </div>
             <StatementSheet statement={activePreview} />
             <StatementSupplement statement={activePreview} />
