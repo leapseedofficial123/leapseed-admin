@@ -183,7 +183,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             ) : null}
 
             <div className="flex items-center gap-3">
-              <BrandLogo width={92} className="shrink-0" />
+              <BrandLogo width={76} className="shrink-0" />
               <div>
                 <p className="font-semibold text-slate-900">{APP_TITLE}</p>
               </div>

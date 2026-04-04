@@ -17,8 +17,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "リープシード給与計算",
-  description: "リープシードの成約入力、給与明細、月次分析をまとめて管理するアプリです。",
+  title: "LeapSeed給与計算",
+  description: "LeapSeedの成約入力、給与明細、月次分析をまとめて管理するアプリです。",
   icons: {
     icon: "/branding/leapseed-mark.png",
     apple: "/branding/leapseed-mark.png",

@@ -257,6 +257,13 @@ function StatementSheet({ statement }: { statement: StatementData }) {
           </div>
         </div>
 
+        <div className="mt-6 rounded-2xl border border-sky-100 bg-sky-50/70 px-5 py-4">
+          <p className="text-xs tracking-[0.22em] text-slate-500">氏名</p>
+          <p className="mt-2 min-h-8 text-2xl font-semibold text-slate-900">
+            {statement.memberName || " "}
+          </p>
+        </div>
+
         <div className="mt-8">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-900">営業報酬（A or B or AC）</p>
@@ -452,6 +459,11 @@ function renderStatementSheetHtml(statement: StatementData, origin: string) {
         </div>
       </div>
 
+      <div class="member-box">
+        <span>氏名</span>
+        <strong>${escapeHtml(statement.memberName) || "&nbsp;"}</strong>
+      </div>
+
       <section class="section">
         <div class="section-head"><strong>営業報酬（A or B or AC）</strong><span>${escapeHtml(statement.memberName)}</span></div>
         <table class="sheet-table">
@@ -580,6 +592,9 @@ function openPrintWindow(title: string, statements: StatementData[]) {
           .title-wrap h2 { margin: 3mm 0 0; font-size: 22px; letter-spacing: .08em; }
           .title-wrap p { margin: 3mm 0 0; font-size: 11px; color: #64748b; }
           .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: .28em; font-size: 10px; color: #94a3b8; }
+          .member-box { margin-top: 6mm; border: 1px solid #d8eaf7; background: #f0f9ff; border-radius: 16px; padding: 4mm; }
+          .member-box span { display: block; font-size: 10px; color: #64748b; letter-spacing: .18em; }
+          .member-box strong { display: block; min-height: 8mm; margin-top: 2mm; font-size: 18px; color: #0f172a; }
           .rate-stack { display: grid; gap: 3mm; }
           .rate-box, .summary-box { border: 1px solid #d8eaf7; background: #f0f9ff; border-radius: 12px; padding: 3mm; }
           .rate-box { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
