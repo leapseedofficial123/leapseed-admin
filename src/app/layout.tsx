@@ -19,9 +19,28 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "LeapSeed給与計算",
   description: "LeapSeedの成約入力、給与明細、月次分析をまとめて管理するアプリです。",
+  manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/branding/leapseed-mark.png",
-    apple: "/branding/leapseed-mark.png",
+    icon: [
+      {
+        url: "/branding/leapseed-home-icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        url: "/branding/leapseed-home-icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: "/branding/leapseed-apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+    shortcut: ["/branding/leapseed-home-icon-192.png"],
   },
 };
 
