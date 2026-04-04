@@ -166,6 +166,14 @@ function buildOtherRewardTableRows(statement: StatementData) {
   return rows;
 }
 
+function hasStatementSupplement(statement: StatementData) {
+  return (
+    statement.overflowRows.length > 0 ||
+    statement.expenseRows.length > 0 ||
+    statement.statementAdjustmentRows.length > 0
+  );
+}
+
 function SummaryBar({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3">
@@ -221,14 +229,19 @@ function StatementSheet({ statement }: { statement: StatementData }) {
 
   return (
     <div className="overflow-x-auto">
-      <div className="mx-auto w-full rounded-[28px] border border-sky-100 bg-white p-6 shadow-sm md:p-7" style={{ maxWidth: SHEET_WIDTH }}>
-        <div className="grid gap-5 lg:grid-cols-[160px_1fr_220px] lg:items-start">
-          <div className="pt-1">
-            <BrandLogo width={150} priority className="mx-auto lg:mx-0" />
+      <div
+        className="mx-auto w-full rounded-[28px] border border-sky-100 bg-white p-5 shadow-sm md:p-6"
+        style={{ maxWidth: SHEET_WIDTH }}
+      >
+        <div className="grid gap-4 lg:grid-cols-[160px_1fr_214px] lg:items-start">
+          <div className="flex justify-center pt-1 lg:justify-start">
+            <div className="isolate rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <BrandLogo width={138} priority className="mx-auto lg:mx-0" />
+            </div>
           </div>
-          <div className="pt-1 text-center lg:pt-4">
+          <div className="pt-1 text-center lg:pt-3">
             <p className="text-xs uppercase tracking-[0.32em] text-slate-400">Statement</p>
-            <h2 className="mt-3 text-[24px] font-semibold tracking-[0.08em] text-slate-900 md:text-[28px]">
+            <h2 className="mt-3 text-[23px] font-semibold tracking-[0.08em] text-slate-900 md:text-[27px]">
               報酬明細
             </h2>
             <p className="mt-3 text-sm text-slate-500">
@@ -257,14 +270,14 @@ function StatementSheet({ statement }: { statement: StatementData }) {
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-sky-100 bg-sky-50/70 px-5 py-4">
+        <div className="mt-5 rounded-2xl border border-sky-100 bg-sky-50/70 px-5 py-4">
           <p className="text-xs tracking-[0.22em] text-slate-500">氏名</p>
           <p className="mt-2 min-h-8 text-2xl font-semibold text-slate-900">
             {statement.memberName || " "}
           </p>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-6">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-900">営業報酬（A or B or AC）</p>
             <p className="text-sm text-slate-500">{statement.memberName}</p>
@@ -305,7 +318,7 @@ function StatementSheet({ statement }: { statement: StatementData }) {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_240px]">
+        <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_236px]">
           <div>
             <p className="mb-3 text-sm font-semibold text-slate-900">その他報酬</p>
             <div className="overflow-hidden rounded-2xl border border-sky-100">
@@ -340,9 +353,9 @@ function StatementSheet({ statement }: { statement: StatementData }) {
           </div>
         </div>
 
-        <div className="mt-8 rounded-[20px] bg-[#84c9ec] px-6 py-5 text-center text-slate-900">
+        <div className="mt-6 rounded-[20px] bg-[#84c9ec] px-6 py-5 text-center text-slate-900">
           <p className="text-sm tracking-[0.22em] text-slate-700">月報酬総額</p>
-          <p className="mt-2 text-[34px] font-semibold">{formatCurrency(statement.finalSalary)}</p>
+          <p className="mt-2 text-[32px] font-semibold">{formatCurrency(statement.finalSalary)}</p>
         </div>
       </div>
     </div>
@@ -350,79 +363,78 @@ function StatementSheet({ statement }: { statement: StatementData }) {
 }
 
 function StatementSupplement({ statement }: { statement: StatementData }) {
-  const hasSupplement =
-    statement.overflowRows.length > 0 ||
-    statement.expenseRows.length > 0 ||
-    statement.statementAdjustmentRows.length > 0 ||
-    statement.adjustment !== 0;
-
-  if (!hasSupplement) {
+  if (!hasStatementSupplement(statement)) {
     return null;
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Supplement</p>
-          <h3 className="mt-2 text-xl font-semibold text-slate-900">給与明細の補足</h3>
-          <p className="mt-2 text-sm text-slate-500">
-            {statement.memberName} / {formatMonthLabel(statement.month)}
-          </p>
+    <div className="overflow-x-auto">
+      <div
+        className="mx-auto w-full rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"
+        style={{ maxWidth: SHEET_WIDTH }}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Supplement</p>
+            <h3 className="mt-2 text-xl font-semibold text-slate-900">給与明細の補足</h3>
+            <p className="mt-2 text-sm text-slate-500">
+              {statement.memberName} / {formatMonthLabel(statement.month)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-right">
+            <p className="text-xs text-slate-500">振込予定額</p>
+            <p className="mt-1 text-xl font-semibold text-slate-900">
+              {formatCurrency(statement.transferAmount)}
+            </p>
+          </div>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-right">
-          <p className="text-xs text-slate-500">振込予定額</p>
-          <p className="mt-1 text-xl font-semibold text-slate-900">
-            {formatCurrency(statement.transferAmount)}
-          </p>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          <SummaryBar label="調整額" value={formatCurrency(statement.adjustment)} />
+          <SummaryBar label="個人経費" value={formatCurrency(statement.personalExpense)} />
+          <SummaryBar label="明細調整" value={formatSignedCurrency(statement.statementAdjustmentTotal)} />
         </div>
+
+        {statement.overflowRows.length ? (
+          <SupplementTable
+            title="テンプレート外の案件内訳"
+            headers={["No.", "商材", "着金日", "営業形態", "金額", "%", "報酬"]}
+            rows={statement.overflowRows.map((row) => [
+              String(row.index),
+              row.productName,
+              formatDateLabel(row.closedOn),
+              row.compensationTypeLabel,
+              formatCurrency(row.salePrice),
+              formatPercent(row.appliedRate),
+              formatCurrency(row.reward),
+            ])}
+          />
+        ) : null}
+
+        {statement.expenseRows.length ? (
+          <SupplementTable
+            title="個人経費"
+            headers={["項目", "メモ", "金額"]}
+            rows={statement.expenseRows.map((row) => [
+              row.category,
+              row.note || "メモなし",
+              formatCurrency(row.amount),
+            ])}
+          />
+        ) : null}
+
+        {statement.statementAdjustmentRows.length ? (
+          <SupplementTable
+            title="明細調整"
+            headers={["項目", "メモ", "金額"]}
+            rows={statement.statementAdjustmentRows.map((row) => [
+              row.title,
+              row.note || "メモなし",
+              formatSignedCurrency(row.amount),
+            ])}
+          />
+        ) : null}
       </div>
-
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
-        <SummaryBar label="調整額" value={formatCurrency(statement.adjustment)} />
-        <SummaryBar label="個人経費" value={formatCurrency(statement.personalExpense)} />
-        <SummaryBar label="明細調整" value={formatSignedCurrency(statement.statementAdjustmentTotal)} />
-      </div>
-
-      {statement.overflowRows.length ? (
-        <SupplementTable
-          title="テンプレート外の案件内訳"
-          headers={["No.", "商材", "着金日", "営業形態", "金額", "%", "報酬"]}
-          rows={statement.overflowRows.map((row) => [
-            String(row.index),
-            row.productName,
-            formatDateLabel(row.closedOn),
-            row.compensationTypeLabel,
-            formatCurrency(row.salePrice),
-            formatPercent(row.appliedRate),
-            formatCurrency(row.reward),
-          ])}
-        />
-      ) : null}
-
-      {statement.expenseRows.length ? (
-        <SupplementTable
-          title="個人経費"
-          headers={["項目", "メモ", "金額"]}
-          rows={statement.expenseRows.map((row) => [
-            row.category,
-            row.note || "メモなし",
-            formatCurrency(row.amount),
-          ])}
-        />
-      ) : null}
-
-      {statement.statementAdjustmentRows.length ? (
-        <SupplementTable
-          title="明細調整"
-          headers={["項目", "メモ", "金額"]}
-          rows={statement.statementAdjustmentRows.map((row) => [
-            row.title,
-            row.note || "メモなし",
-            formatSignedCurrency(row.amount),
-          ])}
-        />
-      ) : null}
     </div>
   );
 }
@@ -444,9 +456,9 @@ function renderStatementSheetHtml(statement: StatementData, origin: string) {
   const otherRows = buildOtherRewardTableRows(statement);
 
   return `
-    <div class="sheet">
+    <div class="sheet sheet-main">
       <div class="sheet-head">
-        <div class="logo-wrap"><img class="logo" src="${origin}/branding/leapseed-logo.png" alt="LeapSeed" /></div>
+        <div class="logo-wrap"><div class="logo-card"><img class="logo" src="${origin}/branding/leapseed-logo.png" alt="LeapSeed" /></div></div>
         <div class="title-wrap">
           <p class="eyebrow">Statement</p>
           <h2>報酬明細</h2>
@@ -532,13 +544,7 @@ function renderStatementSheetHtml(statement: StatementData, origin: string) {
 }
 
 function renderSupplementHtml(statement: StatementData) {
-  const hasSupplement =
-    statement.overflowRows.length > 0 ||
-    statement.expenseRows.length > 0 ||
-    statement.statementAdjustmentRows.length > 0 ||
-    statement.adjustment !== 0;
-
-  if (!hasSupplement) {
+  if (!hasStatementSupplement(statement)) {
     return "";
   }
 
@@ -574,6 +580,7 @@ function openPrintWindow(title: string, statements: StatementData[]) {
   if (!nextWindow) {
     return;
   }
+  const origin = window.location.origin;
 
   nextWindow.document.write(`
     <html lang="ja">
@@ -584,15 +591,19 @@ function openPrintWindow(title: string, statements: StatementData[]) {
         <style>
           @page { size: A4; margin: 10mm; }
           body { margin: 0; font-family: "Yu Gothic", "Yu Gothic UI", sans-serif; color: #0f172a; background: white; }
-          .sheet { width: 190mm; margin: 0 auto 8mm; border: 1px solid #d8eaf7; border-radius: 28px; padding: 9mm; box-sizing: border-box; page-break-after: always; }
-          .sheet-head { display: grid; grid-template-columns: 42mm 1fr 44mm; gap: 6mm; align-items: start; }
+          .statement-bundle + .statement-bundle { break-before: page; page-break-before: always; }
+          .sheet { width: 190mm; margin: 0 auto; border: 1px solid #d8eaf7; border-radius: 28px; padding: 7.5mm; box-sizing: border-box; background: white; }
+          .sheet-main { min-height: 277mm; break-inside: avoid; page-break-inside: avoid; }
+          .supplement-sheet { min-height: 277mm; break-before: page; page-break-before: always; }
+          .sheet-head { display: grid; grid-template-columns: 40mm 1fr 42mm; gap: 5mm; align-items: start; }
           .logo-wrap { display: flex; justify-content: center; align-items: flex-start; }
-          .logo { width: 38mm; max-height: 28mm; object-fit: contain; }
-          .title-wrap { padding-top: 2mm; text-align: center; }
-          .title-wrap h2 { margin: 3mm 0 0; font-size: 22px; letter-spacing: .08em; }
+          .logo-card { display: flex; min-height: 30mm; align-items: center; justify-content: center; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2.5mm 3mm; background: white; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06); }
+          .logo { width: 34mm; max-height: 22mm; object-fit: contain; display: block; background: white; }
+          .title-wrap { padding-top: 1.5mm; text-align: center; }
+          .title-wrap h2 { margin: 3mm 0 0; font-size: 21px; letter-spacing: .08em; }
           .title-wrap p { margin: 3mm 0 0; font-size: 11px; color: #64748b; }
           .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: .28em; font-size: 10px; color: #94a3b8; }
-          .member-box { margin-top: 6mm; border: 1px solid #d8eaf7; background: #f0f9ff; border-radius: 16px; padding: 4mm; }
+          .member-box { margin-top: 5mm; border: 1px solid #d8eaf7; background: #f0f9ff; border-radius: 16px; padding: 4mm; break-inside: avoid; page-break-inside: avoid; }
           .member-box span { display: block; font-size: 10px; color: #64748b; letter-spacing: .18em; }
           .member-box strong { display: block; min-height: 8mm; margin-top: 2mm; font-size: 18px; color: #0f172a; }
           .rate-stack { display: grid; gap: 3mm; }
@@ -600,21 +611,21 @@ function openPrintWindow(title: string, statements: StatementData[]) {
           .rate-box { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
           .amount-box { background: #b6caee; border-radius: 16px; padding: 4mm 3mm; text-align: center; }
           .amount-box span, .summary-box span, .final-box span { display: block; font-size: 10px; color: #475569; letter-spacing: .18em; }
-          .amount-box strong { display: block; margin-top: 2mm; font-size: 22px; color: #0f172a; }
-          .section { margin-top: 7mm; }
+          .amount-box strong { display: block; margin-top: 2mm; font-size: 21px; color: #0f172a; }
+          .section { margin-top: 5.5mm; break-inside: avoid; page-break-inside: avoid; }
           .section-head { display: flex; justify-content: space-between; gap: 4mm; margin-bottom: 2.5mm; font-size: 11px; }
-          table { width: 100%; border-collapse: collapse; font-size: 11px; }
-          th, td { padding: 2.2mm 2.5mm; text-align: left; vertical-align: top; }
+          table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+          th, td { padding: 1.8mm 2.3mm; text-align: left; vertical-align: top; }
           thead th { background: #d6eefc; color: #334155; font-weight: 600; }
           .blue-row td { background: #eef9ff; }
           .white-row td { background: #ffffff; }
-          .sheet-table { border: 1px solid #d8eaf7; border-radius: 16px; overflow: hidden; }
-          .bottom-grid { display: grid; grid-template-columns: 1fr 48mm; gap: 6mm; margin-top: 7mm; }
-          .summary-col { display: grid; gap: 3mm; }
-          .summary-box strong { display: block; margin-top: 2mm; font-size: 16px; color: #0f172a; }
+          .sheet-table { border: 1px solid #d8eaf7; border-radius: 16px; overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
+          .bottom-grid { display: grid; grid-template-columns: 1fr 46mm; gap: 5mm; margin-top: 5.5mm; break-inside: avoid; page-break-inside: avoid; }
+          .summary-col { display: grid; gap: 2.5mm; }
+          .summary-box strong { display: block; margin-top: 2mm; font-size: 15px; color: #0f172a; }
           .summary-box.right { text-align: right; }
-          .final-box { margin-top: 7mm; border-radius: 20px; background: #84c9ec; padding: 4mm; text-align: center; }
-          .final-box strong { display: block; margin-top: 2mm; font-size: 28px; color: #0f172a; }
+          .final-box { margin-top: 6mm; border-radius: 20px; background: #84c9ec; padding: 3.5mm; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+          .final-box strong { display: block; margin-top: 2mm; font-size: 26px; color: #0f172a; }
           .supplement-head { display: flex; justify-content: space-between; gap: 6mm; align-items: start; }
           .supplement-head h2 { margin: 3mm 0 0; font-size: 22px; }
           .supplement-head p { margin: 3mm 0 0; font-size: 11px; color: #64748b; }
@@ -623,7 +634,10 @@ function openPrintWindow(title: string, statements: StatementData[]) {
         </style>
       </head>
       <body>${statements
-        .map((statement) => renderStatementSheetHtml(statement, origin) + renderSupplementHtml(statement))
+        .map(
+          (statement) =>
+            `<section class="statement-bundle">${renderStatementSheetHtml(statement, origin)}${renderSupplementHtml(statement)}</section>`,
+        )
         .join("")}</body>
     </html>
   `);
