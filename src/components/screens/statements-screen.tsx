@@ -772,26 +772,34 @@ export function StatementsScreen() {
         title="今月の給与明細"
         description="ここが個人ごとの給与明細を出す画面です。ダウンロードや印刷はここから行います。"
         action={
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setPreviewId("");
-                setShowTemplatePreview(true);
-              }}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
-            >
-              空テンプレートをプレビュー
-            </button>
-            <button
-              type="button"
-              onClick={() => openPrintWindow(`${selectedMonth}-給与明細一括`, statements)}
-              disabled={!statements.length}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              今月分を一括でPDF保存 / 印刷
-            </button>
-          </div>
+          <details className="group relative">
+            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100">
+              明細操作
+              <span className="text-xs text-slate-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="absolute right-0 z-20 mt-2 w-[260px] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewId("");
+                  setShowTemplatePreview(true);
+                }}
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
+              >
+                <span>空テンプレートを開く</span>
+                <span className="text-xs text-slate-400">プレビュー</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => openPrintWindow(`${selectedMonth}-給与明細一括`, statements)}
+                disabled={!statements.length}
+                className="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <span>今月分を一括でPDF保存 / 印刷</span>
+                <span className="text-xs text-slate-400">出力</span>
+              </button>
+            </div>
+          </details>
         }
       >
         {statements.length ? (
