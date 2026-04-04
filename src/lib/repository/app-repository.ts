@@ -1,4 +1,4 @@
-import { STORAGE_KEY } from "@/lib/constants";
+import { STORAGE_KEY, STORE_VERSION } from "@/lib/constants";
 import { createBlankAppDataStore } from "@/lib/data/blank-state";
 import { createSampleAppDataStore } from "@/lib/data/sample-data";
 import { getCurrentMonth } from "@/lib/date";
@@ -29,6 +29,24 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+function migrateStore(store: AppDataStore, version: number): AppDataStore {
+  let nextStore = { ...store };
+
+  if (version < 2) {
+    nextStore = {
+      ...nextStore,
+      products: [],
+      deals: [],
+      dealParticipants: [],
+    };
+  }
+
+  return {
+    ...nextStore,
+    version: STORE_VERSION,
+  };
+}
+
 function normalizeStore(raw: unknown): AppDataStore {
   const fallback = createBlankAppDataStore(getCurrentMonth());
 
@@ -38,7 +56,7 @@ function normalizeStore(raw: unknown): AppDataStore {
 
   const candidate = raw as Partial<AppDataStore>;
 
-  return {
+  const normalized: AppDataStore = {
     ...fallback,
     version: typeof candidate.version === "number" ? candidate.version : fallback.version,
     members: asArray<Member>(candidate.members),
@@ -67,6 +85,8 @@ function normalizeStore(raw: unknown): AppDataStore {
         candidate.preferences?.analysisRangeMode || fallback.preferences.analysisRangeMode,
     },
   };
+
+  return migrateStore(normalized, normalized.version);
 }
 
 export function createBrowserRepository(): AppRepository {
