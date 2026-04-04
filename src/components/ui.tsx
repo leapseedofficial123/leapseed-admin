@@ -85,6 +85,23 @@ export function Input({
   );
 }
 
+export function InputWithSuffix({
+  suffix,
+  className = "",
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & {
+  suffix: string;
+}) {
+  return (
+    <div className="relative">
+      <Input {...props} className={`pr-10 ${className}`.trim()} />
+      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+        {suffix}
+      </span>
+    </div>
+  );
+}
+
 export function Textarea({
   className = "",
   ...props

@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ANALYSIS_RANGE_OPTIONS } from "@/lib/constants";
 import {
   Badge,
   EmptyState,
   Input,
+  InputWithSuffix,
   Label,
   OverlayPanel,
   PageSection,
@@ -18,8 +20,17 @@ import {
   buildMemberHistoryCsvRows,
   buildMemberStatementCsvRows,
 } from "@/lib/domain/exports";
-import { formatCurrency, formatPercent, toInputString, parseNumberInput } from "@/lib/format";
+import {
+  formatCurrency,
+  formatPercent,
+  parseNumberInput,
+  parsePercentInput,
+  toInputString,
+  toPercentInputString,
+} from "@/lib/format";
 import { createId } from "@/lib/ids";
+import { getRangeAnchorMonths, getRangeLabel, getRangeMonths } from "@/lib/date";
+import type { AnalysisRangeMode } from "@/types/app";
 
 interface MemberFormState {
   id?: string;
@@ -39,13 +50,23 @@ function createEmptyMemberForm(nextOrder: number): MemberFormState {
     isActive: true,
     isExecutive: false,
     executiveCompensationRate: "",
-    defaultReferralRate: "0.1",
+    defaultReferralRate: "10",
     note: "",
   };
 }
 
 export function MembersScreen() {
-  const { store, selectedMonth, currentSnapshot, saveMember, deleteMember } = useAppState();
+  const {
+    store,
+    selectedMonth,
+    setSelectedMonth,
+    trackedMonths,
+    analysisRangeMode,
+    setAnalysisRangeMode,
+    currentSnapshot,
+    saveMember,
+    deleteMember,
+  } = useAppState();
   const [panelMode, setPanelMode] = useState<"edit" | "history" | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
   const [form, setForm] = useState<MemberFormState>(() =>
@@ -57,11 +78,76 @@ export function MembersScreen() {
   const selectedMemberCurrentSummary = currentSnapshot.memberSummaries.find(
     (summary) => summary.memberId === selectedMemberId,
   );
+  const historyRangeAnchors = getRangeAnchorMonths(
+    trackedMonths,
+    analysisRangeMode,
+    selectedMonth,
+  );
+  const visibleHistoryMonths = getRangeMonths(selectedMonth, analysisRangeMode);
   const selectedMemberHistory = useMemo(
     () =>
       selectedMemberId ? buildMemberHistory(store, selectedMemberId) : { monthlyRows: [], yearlyRows: [], memberId: "" },
     [selectedMemberId, store],
   );
+  const filteredHistory = useMemo(() => {
+    const monthSet = new Set(visibleHistoryMonths);
+    const monthlyRows = selectedMemberHistory.monthlyRows.filter((row) => monthSet.has(row.month));
+    const yearlyMap = monthlyRows.reduce<Record<string, (typeof selectedMemberHistory.yearlyRows)[number]>>(
+      (accumulator, row) => {
+        if (!accumulator[row.year]) {
+          accumulator[row.year] = {
+            year: row.year,
+            dealCount: 0,
+            monthlySales: 0,
+            projectReward: 0,
+            referralReward: 0,
+            executiveReward: 0,
+            adjustment: 0,
+            personalExpense: 0,
+            finalSalary: 0,
+          };
+        }
+
+        accumulator[row.year].dealCount += row.dealCount;
+        accumulator[row.year].monthlySales += row.monthlySales;
+        accumulator[row.year].projectReward += row.projectReward;
+        accumulator[row.year].referralReward += row.referralReward;
+        accumulator[row.year].executiveReward += row.executiveReward;
+        accumulator[row.year].adjustment += row.adjustment;
+        accumulator[row.year].personalExpense += row.personalExpense;
+        accumulator[row.year].finalSalary += row.finalSalary;
+        return accumulator;
+      },
+      {},
+    );
+
+    return {
+      monthlyRows,
+      yearlyRows: Object.values(yearlyMap).sort((left, right) => right.year.localeCompare(left.year)),
+      totals: monthlyRows.reduce(
+        (sum, row) => ({
+          dealCount: sum.dealCount + row.dealCount,
+          monthlySales: sum.monthlySales + row.monthlySales,
+          projectReward: sum.projectReward + row.projectReward,
+          referralReward: sum.referralReward + row.referralReward,
+          executiveReward: sum.executiveReward + row.executiveReward,
+          adjustment: sum.adjustment + row.adjustment,
+          personalExpense: sum.personalExpense + row.personalExpense,
+          finalSalary: sum.finalSalary + row.finalSalary,
+        }),
+        {
+          dealCount: 0,
+          monthlySales: 0,
+          projectReward: 0,
+          referralReward: 0,
+          executiveReward: 0,
+          adjustment: 0,
+          personalExpense: 0,
+          finalSalary: 0,
+        },
+      ),
+    };
+  }, [selectedMemberHistory, visibleHistoryMonths]);
 
   const resetForm = () => {
     setForm(createEmptyMemberForm(store.members.length + 1));
@@ -93,8 +179,8 @@ export function MembersScreen() {
       displayOrder: toInputString(member.displayOrder),
       isActive: member.isActive,
       isExecutive: member.isExecutive,
-      executiveCompensationRate: toInputString(member.executiveCompensationRate),
-      defaultReferralRate: toInputString(member.defaultReferralRate),
+      executiveCompensationRate: toPercentInputString(member.executiveCompensationRate),
+      defaultReferralRate: toPercentInputString(member.defaultReferralRate),
       note: member.note,
     });
     setError("");
@@ -118,8 +204,8 @@ export function MembersScreen() {
       displayOrder: parseNumberInput(form.displayOrder) || store.members.length + 1,
       isActive: form.isActive,
       isExecutive: form.isExecutive,
-      executiveCompensationRate: parseNumberInput(form.executiveCompensationRate),
-      defaultReferralRate: parseNumberInput(form.defaultReferralRate) || 0.1,
+      executiveCompensationRate: parsePercentInput(form.executiveCompensationRate),
+      defaultReferralRate: parsePercentInput(form.defaultReferralRate) || 0.1,
       note: form.note.trim(),
     });
 
@@ -272,7 +358,7 @@ export function MembersScreen() {
           </div>
           <div>
             <Label>役員報酬率</Label>
-            <Input
+            <InputWithSuffix
               value={form.executiveCompensationRate}
               onChange={(event) =>
                 setForm((current) => ({
@@ -281,12 +367,13 @@ export function MembersScreen() {
                 }))
               }
               inputMode="decimal"
-              placeholder="0.01"
+              placeholder="1"
+              suffix="%"
             />
           </div>
           <div>
             <Label>直紹介報酬率の初期値</Label>
-            <Input
+            <InputWithSuffix
               value={form.defaultReferralRate}
               onChange={(event) =>
                 setForm((current) => ({
@@ -295,7 +382,8 @@ export function MembersScreen() {
                 }))
               }
               inputMode="decimal"
-              placeholder="0.1"
+              placeholder="10"
+              suffix="%"
             />
           </div>
           <div className="md:col-span-2">
@@ -335,11 +423,42 @@ export function MembersScreen() {
       <OverlayPanel
         open={panelMode === "history"}
         title={selectedMember ? `${selectedMember.name} の履歴` : "メンバー履歴"}
-        description="月別・年別の売上と報酬の推移を確認できます。"
+        description="この画面の中で単月、3か月、半年、年間を切り替えながら確認できます。"
         onClose={closePanel}
       >
         {selectedMember ? (
           <>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label>期間区分</Label>
+                <Select
+                  value={analysisRangeMode}
+                  onChange={(event) =>
+                    setAnalysisRangeMode(event.target.value as AnalysisRangeMode)
+                  }
+                >
+                  {ANALYSIS_RANGE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label>表示基準</Label>
+                <Select
+                  value={selectedMonth}
+                  onChange={(event) => setSelectedMonth(event.target.value)}
+                >
+                  {historyRangeAnchors.map((month) => (
+                    <option key={month} value={month}>
+                      {getRangeLabel(month, analysisRangeMode)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
@@ -364,40 +483,40 @@ export function MembersScreen() {
                 disabled={!selectedMemberCurrentSummary}
                 className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                今月の給与明細CSV
+                選択月の給与明細CSV
               </button>
             </div>
 
             <div className="mt-5 grid gap-4 lg:grid-cols-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">今月売上</p>
+                <p className="text-sm text-slate-500">表示期間売上</p>
                 <p className="mt-2 text-xl font-semibold text-slate-900">
-                  {formatCurrency(selectedMemberCurrentSummary?.monthlySales ?? 0)}
+                  {formatCurrency(filteredHistory.totals.monthlySales)}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">今月最終給料</p>
+                <p className="text-sm text-slate-500">表示期間最終給料</p>
                 <p className="mt-2 text-xl font-semibold text-slate-900">
-                  {formatCurrency(selectedMemberCurrentSummary?.finalSalary ?? 0)}
+                  {formatCurrency(filteredHistory.totals.finalSalary)}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">今月個人経費</p>
+                <p className="text-sm text-slate-500">表示期間個人経費</p>
                 <p className="mt-2 text-xl font-semibold text-slate-900">
-                  {formatCurrency(selectedMemberCurrentSummary?.personalExpense ?? 0)}
+                  {formatCurrency(filteredHistory.totals.personalExpense)}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">累計月数</p>
+                <p className="text-sm text-slate-500">表示月数</p>
                 <p className="mt-2 text-xl font-semibold text-slate-900">
-                  {selectedMemberHistory.monthlyRows.length}
+                  {filteredHistory.monthlyRows.length}
                 </p>
               </div>
             </div>
 
             <div className="mt-6">
-              <p className="mb-3 text-sm font-semibold text-slate-900">年別サマリー</p>
-              {selectedMemberHistory.yearlyRows.length ? (
+              <p className="mb-3 text-sm font-semibold text-slate-900">表示期間の年別集計</p>
+              {filteredHistory.yearlyRows.length ? (
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-slate-500">
@@ -411,7 +530,7 @@ export function MembersScreen() {
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedMemberHistory.yearlyRows.map((row) => (
+                      {filteredHistory.yearlyRows.map((row) => (
                         <tr key={row.year} className="border-t border-slate-100">
                           <td className="py-3 pr-4 font-medium text-slate-900">{row.year}</td>
                           <td className="py-3 pr-4">{row.dealCount}</td>
@@ -428,15 +547,15 @@ export function MembersScreen() {
                 </div>
               ) : (
                 <EmptyState
-                  title="年別データがまだありません"
-                  description="売上入力が増えると、ここに年別の推移が表示されます。"
+                  title="表示期間の年別データがありません"
+                  description="この期間では対象データがありません。"
                 />
               )}
             </div>
 
             <div className="mt-6">
-              <p className="mb-3 text-sm font-semibold text-slate-900">月別履歴</p>
-              {selectedMemberHistory.monthlyRows.length ? (
+              <p className="mb-3 text-sm font-semibold text-slate-900">表示期間の月別履歴</p>
+              {filteredHistory.monthlyRows.length ? (
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-slate-500">
@@ -453,7 +572,7 @@ export function MembersScreen() {
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedMemberHistory.monthlyRows.map((row) => (
+                      {filteredHistory.monthlyRows.map((row) => (
                         <tr key={row.month} className="border-t border-slate-100">
                           <td className="py-3 pr-4 font-medium text-slate-900">{row.month}</td>
                           <td className="py-3 pr-4">{row.dealCount}</td>
@@ -473,8 +592,8 @@ export function MembersScreen() {
                 </div>
               ) : (
                 <EmptyState
-                  title="月別履歴がまだありません"
-                  description="売上入力が増えると、ここに月別の履歴が表示されます。"
+                  title="表示期間の月別履歴がありません"
+                  description="この期間では対象データがありません。"
                 />
               )}
             </div>

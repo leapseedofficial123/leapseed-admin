@@ -4,13 +4,19 @@ import { useState } from "react";
 import {
   EmptyState,
   Input,
+  InputWithSuffix,
   Label,
   OverlayPanel,
   PageSection,
   Select,
 } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
-import { formatMonthLabel, formatPercent, parseNumberInput, toInputString } from "@/lib/format";
+import {
+  formatMonthLabel,
+  formatPercent,
+  parsePercentInput,
+  toPercentInputString,
+} from "@/lib/format";
 import { createId } from "@/lib/ids";
 
 interface ReferralFormState {
@@ -26,7 +32,7 @@ function createEmptyReferralForm(): ReferralFormState {
   return {
     introducerMemberId: "",
     referredMemberId: "",
-    referralRate: "0.1",
+    referralRate: "10",
     startMonth: "",
     endMonth: "",
   };
@@ -63,7 +69,7 @@ export function ReferralsScreen() {
       id: relationship.id,
       introducerMemberId: relationship.introducerMemberId,
       referredMemberId: relationship.referredMemberId,
-      referralRate: toInputString(relationship.referralRate),
+      referralRate: toPercentInputString(relationship.referralRate),
       startMonth: relationship.startMonth,
       endMonth: relationship.endMonth ?? "",
     });
@@ -91,7 +97,7 @@ export function ReferralsScreen() {
       id: form.id || createId("referral"),
       introducerMemberId: form.introducerMemberId,
       referredMemberId: form.referredMemberId,
-      referralRate: parseNumberInput(form.referralRate) || 0.1,
+      referralRate: parsePercentInput(form.referralRate) || 0.1,
       startMonth: form.startMonth,
       endMonth: form.endMonth || undefined,
     });
@@ -189,10 +195,10 @@ export function ReferralsScreen() {
                 setForm((current) => ({
                   ...current,
                   introducerMemberId: event.target.value,
-                  referralRate:
-                    current.id || current.referralRate
-                      ? current.referralRate
-                      : toInputString(selected?.defaultReferralRate ?? 0.1),
+                      referralRate:
+                        current.id || current.referralRate
+                          ? current.referralRate
+                      : toPercentInputString(selected?.defaultReferralRate ?? 0.1),
                 }));
               }}
             >
@@ -225,13 +231,14 @@ export function ReferralsScreen() {
           </div>
           <div>
             <Label>紹介報酬率</Label>
-            <Input
+            <InputWithSuffix
               value={form.referralRate}
               onChange={(event) =>
                 setForm((current) => ({ ...current, referralRate: event.target.value }))
               }
               inputMode="decimal"
-              placeholder="0.1"
+              placeholder="10"
+              suffix="%"
             />
           </div>
           <div>

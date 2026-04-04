@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 
-export function BrandLogo({
+export function BrandMark({
   size = 44,
   priority,
   className = "",
@@ -22,6 +22,32 @@ export function BrandLogo({
         fill
         priority={priority}
         sizes={`${size}px`}
+        className="object-contain"
+      />
+    </span>
+  );
+}
+
+export function BrandLogo({
+  width = 92,
+  priority,
+  className = "",
+}: {
+  width?: number;
+  priority?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`relative block shrink-0 overflow-hidden ${className}`}
+      style={{ width, aspectRatio: "450 / 390" }}
+    >
+      <Image
+        src="/branding/leapseed-logo.png"
+        alt="LeapSeed"
+        fill
+        priority={priority}
+        sizes={`${width}px`}
         className="object-contain"
       />
     </span>

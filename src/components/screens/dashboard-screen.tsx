@@ -38,12 +38,12 @@ export function DashboardScreen() {
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <BrandLogo size={56} />
+            <BrandLogo width={96} />
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-                <Badge tone="teal">基準月 {formatMonthLabel(selectedMonth)}</Badge>
+                <Badge tone="teal">表示期間 {getRangeLabel(selectedMonth, analysisRangeMode)}</Badge>
                 <Badge>{periodModeLabel}</Badge>
-                <span>{getRangeLabel(selectedMonth, analysisRangeMode)}</span>
+                <span>この期間をベースに集計しています。</span>
               </div>
               <p className="text-sm text-slate-600">
                 毎月使うのは `成約一覧` `給与明細` `最終集計` の3つです。

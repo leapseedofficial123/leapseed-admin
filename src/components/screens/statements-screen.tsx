@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BrandLogo } from "@/components/brand-logo";
+import { BrandMark } from "@/components/brand-logo";
 import {
   EmptyState,
   Input,
@@ -164,7 +164,7 @@ function StatementSheet({ statement }: { statement: StatementData }) {
       <div className="mx-auto w-full rounded-[28px] border border-sky-100 bg-white p-6 shadow-sm md:p-7" style={{ maxWidth: SHEET_WIDTH }}>
         <div className="grid gap-5 lg:grid-cols-[92px_1fr_220px] lg:items-start">
           <div className="pt-1">
-            <BrandLogo size={72} priority />
+            <BrandMark size={72} priority />
           </div>
           <div className="pt-1 text-center lg:pt-4">
             <p className="text-xs uppercase tracking-[0.32em] text-slate-400">Statement</p>

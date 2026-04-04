@@ -5,6 +5,7 @@ import {
   Badge,
   EmptyState,
   Input,
+  InputWithSuffix,
   Label,
   OverlayPanel,
   PageSection,
@@ -12,7 +13,14 @@ import {
   Textarea,
 } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
-import { formatPercent, parseNumberInput, toInputString } from "@/lib/format";
+import {
+  formatCurrency,
+  formatPercent,
+  parseNumberInput,
+  parsePercentInput,
+  toInputString,
+  toPercentInputString,
+} from "@/lib/format";
 import { createId } from "@/lib/ids";
 
 interface ProductFormState {
@@ -77,7 +85,7 @@ export function ProductsScreen() {
       defaultSalePrice: toInputString(product.defaultSalePrice),
       companyShareMethod: product.companyShareMethod,
       companyShareFixedAmount: toInputString(product.companyShareFixedAmount),
-      companyShareRate: toInputString(product.companyShareRate),
+      companyShareRate: toPercentInputString(product.companyShareRate),
       cost: toInputString(product.cost),
       note: product.note,
     });
@@ -99,7 +107,7 @@ export function ProductsScreen() {
       defaultSalePrice: parseNumberInput(form.defaultSalePrice),
       companyShareMethod: form.companyShareMethod,
       companyShareFixedAmount: parseNumberInput(form.companyShareFixedAmount),
-      companyShareRate: parseNumberInput(form.companyShareRate),
+      companyShareRate: parsePercentInput(form.companyShareRate),
       cost: parseNumberInput(form.cost),
       note: form.note.trim(),
     });
@@ -142,9 +150,9 @@ export function ProductsScreen() {
                       {product.companyShareMethod}
                     </p>
                     <p className="text-sm text-slate-600">
-                      固定額 {toInputString(product.companyShareFixedAmount) || "0"} / 率{" "}
+                      固定額 {formatCurrency(product.companyShareFixedAmount)} / 率{" "}
                       {formatPercent(product.companyShareRate)} / 原価{" "}
-                      {toInputString(product.cost) || "0"}
+                      {formatCurrency(product.cost)}
                     </p>
                     {product.note ? (
                       <p className="text-sm leading-6 text-slate-600">{product.note}</p>
@@ -225,13 +233,14 @@ export function ProductsScreen() {
           </div>
           <div>
             <Label>固定売価</Label>
-            <Input
+            <InputWithSuffix
               value={form.defaultSalePrice}
               onChange={(event) =>
                 setForm((current) => ({ ...current, defaultSalePrice: event.target.value }))
               }
               inputMode="numeric"
               placeholder="880000"
+              suffix="円"
             />
           </div>
           <div>
@@ -254,7 +263,7 @@ export function ProductsScreen() {
           </div>
           <div>
             <Label>固定取り分額</Label>
-            <Input
+            <InputWithSuffix
               value={form.companyShareFixedAmount}
               onChange={(event) =>
                 setForm((current) => ({
@@ -264,26 +273,29 @@ export function ProductsScreen() {
               }
               inputMode="numeric"
               placeholder="350000"
+              suffix="円"
             />
           </div>
           <div>
             <Label>会社取り分率</Label>
-            <Input
+            <InputWithSuffix
               value={form.companyShareRate}
               onChange={(event) =>
                 setForm((current) => ({ ...current, companyShareRate: event.target.value }))
               }
               inputMode="decimal"
-              placeholder="0.42"
+              placeholder="42"
+              suffix="%"
             />
           </div>
           <div>
             <Label>原価</Label>
-            <Input
+            <InputWithSuffix
               value={form.cost}
               onChange={(event) => setForm((current) => ({ ...current, cost: event.target.value }))}
               inputMode="numeric"
               placeholder="180000"
+              suffix="円"
             />
           </div>
           <div className="md:col-span-2">

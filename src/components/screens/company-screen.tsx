@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { Badge, EmptyState, PageSection, Select, StatCard } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
-import { DEAL_PATTERN_OPTIONS } from "@/lib/constants";
+import { ANALYSIS_RANGE_OPTIONS, DEAL_PATTERN_OPTIONS } from "@/lib/constants";
 import { downloadCsv } from "@/lib/csv";
-import { getRangeLabel } from "@/lib/date";
+import { getRangeAnchorMonths, getRangeLabel } from "@/lib/date";
 import { buildCompanyAnalysis, type AnalysisFilters } from "@/lib/domain/analysis";
 import {
   buildCompanySummaryCsvRows,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/domain/exports";
 import { buildPeriodOverview } from "@/lib/domain/payroll";
 import { formatCurrency, formatMonthLabel, formatNumber } from "@/lib/format";
+import type { AnalysisRangeMode } from "@/types/app";
 
 type LocalFilters = Pick<AnalysisFilters, "productId" | "memberId" | "pattern" | "companyRevenueMode">;
 
@@ -25,8 +26,21 @@ const emptyFilters: LocalFilters = {
 };
 
 export function CompanyScreen() {
-  const { store, selectedMonth, analysisRangeMode, analysisMonths } = useAppState();
+  const {
+    store,
+    selectedMonth,
+    setSelectedMonth,
+    trackedMonths,
+    analysisRangeMode,
+    setAnalysisRangeMode,
+    analysisMonths,
+  } = useAppState();
   const [filters, setFilters] = useState<LocalFilters>(emptyFilters);
+  const rangeAnchorMonths = getRangeAnchorMonths(
+    trackedMonths,
+    analysisRangeMode,
+    selectedMonth,
+  );
   const rangeMonths = analysisMonths.length ? analysisMonths : [selectedMonth];
   const startMonth = rangeMonths[0];
   const endMonth = rangeMonths[rangeMonths.length - 1];
@@ -39,25 +53,43 @@ export function CompanyScreen() {
   const companySummaryRows = buildCompanySummaryCsvRows(store, startMonth, endMonth);
   const filteredMonthlyRows = buildFilteredMonthlyAnalysisCsvRows(analysis);
   const filteredDealRows = buildFilteredDealsCsvRows(analysis);
-  const periodModeLabel =
-    analysisRangeMode === "month"
-      ? "単月"
-      : analysisRangeMode === "quarter"
-        ? "3か月"
-        : analysisRangeMode === "halfyear"
-          ? "半年"
-          : "年間";
-
   return (
     <div className="space-y-6">
       <PageSection
         title="分析の表示範囲"
-        description="対象期間の設定に合わせて、売上、利益、案件台帳を見比べられます。"
+        description="この画面の中でも、単月、3か月、半年、年間を切り替えられます。"
       >
-        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-          <Badge tone="teal">基準月 {formatMonthLabel(selectedMonth)}</Badge>
-          <Badge>{periodModeLabel}</Badge>
-          <span>{getRangeLabel(selectedMonth, analysisRangeMode)}</span>
+        <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">期間区分</p>
+            <Select
+              value={analysisRangeMode}
+              onChange={(event) => setAnalysisRangeMode(event.target.value as AnalysisRangeMode)}
+            >
+              {ANALYSIS_RANGE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">表示基準</p>
+            <Select
+              value={selectedMonth}
+              onChange={(event) => setSelectedMonth(event.target.value)}
+            >
+              {rangeAnchorMonths.map((month) => (
+                <option key={month} value={month}>
+                  {getRangeLabel(month, analysisRangeMode)}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+          <Badge tone="teal">表示期間 {getRangeLabel(selectedMonth, analysisRangeMode)}</Badge>
+          <span>基準開始月 {formatMonthLabel(startMonth)}</span>
         </div>
       </PageSection>
 

@@ -7,8 +7,7 @@ import { useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { useAppState } from "@/context/app-state-context";
 import { ANALYSIS_RANGE_OPTIONS, APP_TITLE } from "@/lib/constants";
-import { getRangeLabel } from "@/lib/date";
-import { formatMonthLabel } from "@/lib/format";
+import { getRangeAnchorMonths, getRangeLabel } from "@/lib/date";
 import type { AnalysisRangeMode } from "@/types/app";
 
 const primaryItems = [
@@ -71,6 +70,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { selectedMonth, setSelectedMonth, trackedMonths, analysisRangeMode, setAnalysisRangeMode } =
     useAppState();
+  const rangeAnchorMonths = getRangeAnchorMonths(
+    trackedMonths,
+    analysisRangeMode,
+    selectedMonth,
+  );
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -84,7 +88,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-200 px-5 py-5">
-        <BrandLogo size={44} priority />
+        <BrandLogo width={112} priority />
         <h1 className="mt-3 text-lg font-semibold tracking-tight text-slate-900">{APP_TITLE}</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           毎月使う画面を上に、設定や分析を下にまとめています。
@@ -111,15 +115,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
 
             <div>
-              <p className="mb-2 text-sm font-medium text-slate-700">基準月</p>
+              <p className="mb-2 text-sm font-medium text-slate-700">表示基準</p>
               <select
                 value={selectedMonth}
                 onChange={(event) => setSelectedMonth(event.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
               >
-                {trackedMonths.map((month) => (
+                {rangeAnchorMonths.map((month) => (
                   <option key={month} value={month}>
-                    {formatMonthLabel(month)}
+                    {getRangeLabel(month, analysisRangeMode)}
                   </option>
                 ))}
               </select>
@@ -179,12 +183,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             ) : null}
 
             <div className="flex items-center gap-3">
-              <BrandLogo size={38} />
+              <BrandLogo width={68} />
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
-                  LeapSeed Payroll
+                  Payroll
                 </p>
-                <p className="mt-1 font-semibold text-slate-900">{APP_TITLE}</p>
+                <p className="mt-1 font-semibold text-slate-900">給与計算サイト</p>
               </div>
             </div>
           </div>

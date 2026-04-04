@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getRangeMonths, sortMonths } from "@/lib/date";
+import { getRangeMonths, getRangeStartMonth, sortMonths } from "@/lib/date";
 import {
   buildCompanyTrend,
   buildMonthlyPayroll,
@@ -105,10 +105,29 @@ function ensureMonthlySetting(store: AppDataStore): AppDataStore {
   };
 }
 
+function normalizePreferenceMonth(store: AppDataStore): AppDataStore {
+  const normalizedMonth = getRangeStartMonth(
+    store.preferences.displayMonth,
+    store.preferences.analysisRangeMode,
+  );
+
+  if (normalizedMonth === store.preferences.displayMonth) {
+    return store;
+  }
+
+  return {
+    ...store,
+    preferences: {
+      ...store.preferences,
+      displayMonth: normalizedMonth,
+    },
+  };
+}
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [repository] = useState(createBrowserRepository);
   const [store, setStore] = useState<AppDataStore>(() =>
-    ensureMonthlySetting(repository.load()),
+    ensureMonthlySetting(normalizePreferenceMonth(repository.load())),
   );
 
   useEffect(() => {
@@ -146,6 +165,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         ...current,
         preferences: {
           ...current.preferences,
+          displayMonth: getRangeStartMonth(current.preferences.displayMonth, mode),
           analysisRangeMode: mode,
         },
       }));
@@ -355,10 +375,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       return repository.export(store);
     },
     importJson(raw) {
-      setStore(ensureMonthlySetting(repository.import(raw)));
+      setStore(ensureMonthlySetting(normalizePreferenceMonth(repository.import(raw))));
     },
     resetData(mode) {
-      setStore(ensureMonthlySetting(repository.reset(mode)));
+      setStore(ensureMonthlySetting(normalizePreferenceMonth(repository.reset(mode))));
     },
   };
 

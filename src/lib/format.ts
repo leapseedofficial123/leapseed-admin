@@ -70,12 +70,28 @@ export function toInputString(value: number): string {
   return String(value);
 }
 
+function trimDecimalString(value: number): string {
+  return value.toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+}
+
+export function toPercentInputString(value: number): string {
+  if (!value) {
+    return "";
+  }
+
+  return trimDecimalString(value * 100);
+}
+
 export function clampRate(value: number): number {
   if (!Number.isFinite(value)) {
     return 0;
   }
 
   return Math.max(0, Math.min(value, 1));
+}
+
+export function parsePercentInput(value: string): number {
+  return clampRate(parseNumberInput(value) / 100);
 }
 
 export function bandLabel(minSales: number): string {

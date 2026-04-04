@@ -5,6 +5,7 @@ import {
   Badge,
   EmptyState,
   Input,
+  InputWithSuffix,
   Label,
   OverlayPanel,
   PageSection,
@@ -13,7 +14,14 @@ import {
 } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
 import { DEAL_PATTERN_OPTIONS } from "@/lib/constants";
-import { formatNumber, formatPercent, parseNumberInput, toInputString } from "@/lib/format";
+import {
+  formatNumber,
+  formatPercent,
+  parseNumberInput,
+  parsePercentInput,
+  toInputString,
+  toPercentInputString,
+} from "@/lib/format";
 import { createId } from "@/lib/ids";
 
 interface CompensationTypeFormState {
@@ -120,7 +128,7 @@ export function RatesScreen() {
       rates: Object.fromEntries(
         store.compensationTypes.map((type) => [
           type.id,
-          toInputString(band.rates[type.id] ?? 0),
+          toPercentInputString(band.rates[type.id] ?? 0),
         ]),
       ),
     });
@@ -172,7 +180,7 @@ export function RatesScreen() {
       rates: Object.fromEntries(
         store.compensationTypes.map((type) => [
           type.id,
-          parseNumberInput(bandForm.rates[type.id] ?? "0"),
+          parsePercentInput(bandForm.rates[type.id] ?? "0"),
         ]),
       ),
     });
@@ -430,7 +438,7 @@ export function RatesScreen() {
               {store.compensationTypes.map((type) => (
                 <div key={type.id}>
                   <Label>{type.label}</Label>
-                  <Input
+                  <InputWithSuffix
                     value={bandForm.rates[type.id] ?? ""}
                     onChange={(event) =>
                       setBandForm((current) => ({
@@ -442,7 +450,8 @@ export function RatesScreen() {
                       }))
                     }
                     inputMode="decimal"
-                    placeholder="0.4"
+                    placeholder="40"
+                    suffix="%"
                   />
                 </div>
               ))}

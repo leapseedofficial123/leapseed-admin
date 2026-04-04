@@ -5,6 +5,7 @@ import {
   Badge,
   EmptyState,
   Input,
+  InputWithSuffix,
   Label,
   OverlayPanel,
   PageSection,
@@ -17,7 +18,9 @@ import {
   formatMonthLabel,
   formatPercent,
   parseNumberInput,
+  parsePercentInput,
   toInputString,
+  toPercentInputString,
 } from "@/lib/format";
 
 interface MonthlySettingFormState {
@@ -94,7 +97,7 @@ export function ExecutivesScreen() {
       memberId: member.id,
       name: member.name,
       isExecutive: member.isExecutive,
-      executiveCompensationRate: toInputString(member.executiveCompensationRate),
+      executiveCompensationRate: toPercentInputString(member.executiveCompensationRate),
       note: member.note,
     });
     setPanelMode("member");
@@ -118,7 +121,7 @@ export function ExecutivesScreen() {
     saveMember({
       ...member,
       isExecutive: memberForm.isExecutive,
-      executiveCompensationRate: parseNumberInput(memberForm.executiveCompensationRate),
+      executiveCompensationRate: parsePercentInput(memberForm.executiveCompensationRate),
     });
     closePanel();
   };
@@ -320,7 +323,7 @@ export function ExecutivesScreen() {
               </div>
               <div>
                 <Label>役員報酬率</Label>
-                <Input
+                <InputWithSuffix
                   value={memberForm.executiveCompensationRate}
                   onChange={(event) =>
                     setMemberForm((current) => ({
@@ -329,7 +332,8 @@ export function ExecutivesScreen() {
                     }))
                   }
                   inputMode="decimal"
-                  placeholder="0.01"
+                  placeholder="1"
+                  suffix="%"
                 />
               </div>
               <div className="md:col-span-2">

@@ -97,6 +97,26 @@ export function getRangeLabel(anchorMonth: string, mode: AnalysisRangeMode): str
   return `${formatMonthText(months[0])}〜${formatMonthText(months[months.length - 1])}`;
 }
 
+export function getRangeAnchorMonths(
+  months: string[],
+  mode: AnalysisRangeMode,
+  fallbackMonth?: string,
+): string[] {
+  const sourceMonths = months.length
+    ? months
+    : fallbackMonth
+      ? [fallbackMonth]
+      : [];
+
+  if (!sourceMonths.length) {
+    return [];
+  }
+
+  return sortMonths(
+    Array.from(new Set(sourceMonths.map((month) => getRangeStartMonth(month, mode)))),
+  );
+}
+
 export function getMonthsBetween(startMonth: string, endMonth?: string): string[] {
   if (!startMonth && !endMonth) {
     return [];
