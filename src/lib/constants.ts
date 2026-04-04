@@ -1,7 +1,7 @@
 import { getCurrentMonth, getToday } from "@/lib/date";
 import type { CompensationBand, CompensationType } from "@/types/app";
 
-export const APP_TITLE = "LeapSeed 給与計算サイト";
+export const APP_TITLE = "リープシード給与計算";
 export const STORAGE_KEY = "leapseed-payroll-store";
 export const STORE_VERSION = 1;
 

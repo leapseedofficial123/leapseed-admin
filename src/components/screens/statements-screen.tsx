@@ -751,6 +751,45 @@ export function StatementsScreen() {
           </div>
         }
       >
+        <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">記載プレビュー</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                実際にどこへ数字や名前が入るのかを、空のテンプレートで先に確認できます。
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewId("");
+                  setShowTemplatePreview(true);
+                }}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+              >
+                大きく見る
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  openPrintWindow(`${selectedMonth}-給与明細テンプレート`, [templatePreview])
+                }
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+              >
+                PDF保存 / 印刷
+              </button>
+            </div>
+          </div>
+          <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
+            <div className="origin-top scale-[0.72] sm:scale-[0.82] lg:scale-[0.9]">
+              <div className="-mb-20 -ml-28 -mr-28 sm:-mb-14 sm:-ml-16 sm:-mr-16 lg:-mb-8 lg:-ml-8 lg:-mr-8">
+                <StatementSheet statement={templatePreview} />
+              </div>
+            </div>
+          </div>
+        </div>
+
         {statements.length ? (
           <div className="space-y-3">
             {statements.map((statement) => (

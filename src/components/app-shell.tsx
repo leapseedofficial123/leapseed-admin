@@ -186,9 +186,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <BrandLogo width={68} />
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
-                  Payroll
+                  LeapSeed
                 </p>
-                <p className="mt-1 font-semibold text-slate-900">給与計算サイト</p>
+                <p className="mt-1 font-semibold text-slate-900">{APP_TITLE}</p>
               </div>
             </div>
           </div>
