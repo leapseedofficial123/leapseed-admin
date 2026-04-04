@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BrandMark } from "@/components/brand-logo";
+import { BrandLogo } from "@/components/brand-logo";
 import {
   EmptyState,
   Input,
@@ -156,6 +156,16 @@ function buildOtherRewardRows(statement: StatementData) {
   return rows;
 }
 
+function buildOtherRewardTableRows(statement: StatementData) {
+  const rows = buildOtherRewardRows(statement);
+
+  while (rows.length < 2) {
+    rows.push(["", "", "", ""]);
+  }
+
+  return rows;
+}
+
 function SummaryBar({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3">
@@ -207,14 +217,14 @@ function SupplementTable({
 
 function StatementSheet({ statement }: { statement: StatementData }) {
   const rows = buildDisplayRows(statement);
-  const otherRows = buildOtherRewardRows(statement);
+  const otherRows = buildOtherRewardTableRows(statement);
 
   return (
     <div className="overflow-x-auto">
       <div className="mx-auto w-full rounded-[28px] border border-sky-100 bg-white p-6 shadow-sm md:p-7" style={{ maxWidth: SHEET_WIDTH }}>
-        <div className="grid gap-5 lg:grid-cols-[92px_1fr_220px] lg:items-start">
+        <div className="grid gap-5 lg:grid-cols-[160px_1fr_220px] lg:items-start">
           <div className="pt-1">
-            <BrandMark size={72} priority />
+            <BrandLogo width={150} priority className="mx-auto lg:mx-0" />
           </div>
           <div className="pt-1 text-center lg:pt-4">
             <p className="text-xs uppercase tracking-[0.32em] text-slate-400">Statement</p>
@@ -288,50 +298,40 @@ function StatementSheet({ statement }: { statement: StatementData }) {
           </div>
         </div>
 
-        {otherRows.length ? (
-          <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_240px]">
-            <div>
-              <p className="mb-3 text-sm font-semibold text-slate-900">その他報酬</p>
-              <div className="overflow-hidden rounded-2xl border border-sky-100">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-[#d6eefc] text-slate-700">
-                    <tr>
-                      <th className="px-3 py-3">No.</th>
-                      <th className="px-3 py-3">名前</th>
-                      <th className="px-3 py-3">報酬率</th>
-                      <th className="px-3 py-3">報酬</th>
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_240px]">
+          <div>
+            <p className="mb-3 text-sm font-semibold text-slate-900">その他報酬</p>
+            <div className="overflow-hidden rounded-2xl border border-sky-100">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-[#d6eefc] text-slate-700">
+                  <tr>
+                    <th className="px-3 py-3">No.</th>
+                    <th className="px-3 py-3">名前</th>
+                    <th className="px-3 py-3">報酬率</th>
+                    <th className="px-3 py-3">報酬</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {otherRows.map((row, index) => (
+                    <tr key={`other_reward_${index}`} className={index % 2 === 0 ? "bg-[#eef9ff]" : "bg-white"}>
+                      {row.map((cell, cellIndex) => (
+                        <td key={`other_reward_${index}_${cellIndex}`} className="px-3 py-3">
+                          {cell}
+                        </td>
+                      ))}
                     </tr>
-                  </thead>
-                  <tbody>
-                    {otherRows.map((row, index) => (
-                      <tr key={row[0]} className={index % 2 === 0 ? "bg-[#eef9ff]" : "bg-white"}>
-                        {row.map((cell) => (
-                          <td key={`${row[0]}_${cell}`} className="px-3 py-3">
-                            {cell}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          </div>
 
-            <div className="space-y-3">
-              <SummaryBar label="売上帯" value={statement.appliedBandLabel} />
-              <SummaryBar label="調整額" value={formatCurrency(statement.adjustment)} />
-              <SummaryBar label="振込予定額" value={formatCurrency(statement.transferAmount)} />
-            </div>
+          <div className="space-y-3">
+            <SummaryBar label="売上帯" value={statement.appliedBandLabel} />
+            <SummaryBar label="調整額" value={formatCurrency(statement.adjustment)} />
+            <SummaryBar label="振込予定額" value={formatCurrency(statement.transferAmount)} />
           </div>
-        ) : (
-          <div className="mt-8 lg:flex lg:justify-end">
-            <div className="space-y-3 lg:w-[240px]">
-              <SummaryBar label="売上帯" value={statement.appliedBandLabel} />
-              <SummaryBar label="調整額" value={formatCurrency(statement.adjustment)} />
-              <SummaryBar label="振込予定額" value={formatCurrency(statement.transferAmount)} />
-            </div>
-          </div>
-        )}
+        </div>
 
         <div className="mt-8 rounded-[20px] bg-[#84c9ec] px-6 py-5 text-center text-slate-900">
           <p className="text-sm tracking-[0.22em] text-slate-700">月報酬総額</p>
@@ -434,12 +434,12 @@ function printTableHtml(title: string, headers: string[], rows: Array<Array<stri
 
 function renderStatementSheetHtml(statement: StatementData, origin: string) {
   const rows = buildDisplayRows(statement);
-  const otherRows = buildOtherRewardRows(statement);
+  const otherRows = buildOtherRewardTableRows(statement);
 
   return `
     <div class="sheet">
       <div class="sheet-head">
-        <div class="logo-wrap"><img class="logo" src="${origin}/branding/leapseed-mark.png" alt="LeapSeed" /></div>
+        <div class="logo-wrap"><img class="logo" src="${origin}/branding/leapseed-logo.png" alt="LeapSeed" /></div>
         <div class="title-wrap">
           <p class="eyebrow">Statement</p>
           <h2>報酬明細</h2>
@@ -481,49 +481,35 @@ function renderStatementSheetHtml(statement: StatementData, origin: string) {
         </table>
       </section>
 
-      ${
-        otherRows.length
-          ? `
-            <div class="bottom-grid">
-              <section class="section">
-                <strong>その他報酬</strong>
-                <table class="sheet-table small">
-                  <thead>
-                    <tr>
-                      <th>No.</th><th>名前</th><th>報酬率</th><th>報酬</th>
+      <div class="bottom-grid">
+        <section class="section">
+          <strong>その他報酬</strong>
+          <table class="sheet-table small">
+            <thead>
+              <tr>
+                <th>No.</th><th>名前</th><th>報酬率</th><th>報酬</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${otherRows
+                .map(
+                  (row, index) => `
+                    <tr class="${index % 2 === 0 ? "blue-row" : "white-row"}">
+                      ${row.map((cell) => `<td>${cell}</td>`).join("")}
                     </tr>
-                  </thead>
-                  <tbody>
-                    ${otherRows
-                      .map(
-                        (row, index) => `
-                          <tr class="${index % 2 === 0 ? "blue-row" : "white-row"}">
-                            ${row.map((cell) => `<td>${cell}</td>`).join("")}
-                          </tr>
-                        `,
-                      )
-                      .join("")}
-                  </tbody>
-                </table>
-              </section>
+                  `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </section>
 
-              <div class="summary-col">
-                <div class="summary-box"><span>売上帯</span><strong>${escapeHtml(statement.appliedBandLabel)}</strong></div>
-                <div class="summary-box"><span>調整額</span><strong>${formatCurrency(statement.adjustment)}</strong></div>
-                <div class="summary-box"><span>振込予定額</span><strong>${formatCurrency(statement.transferAmount)}</strong></div>
-              </div>
-            </div>
-          `
-          : `
-            <div class="summary-only">
-              <div class="summary-col">
-                <div class="summary-box"><span>売上帯</span><strong>${escapeHtml(statement.appliedBandLabel)}</strong></div>
-                <div class="summary-box"><span>調整額</span><strong>${formatCurrency(statement.adjustment)}</strong></div>
-                <div class="summary-box"><span>振込予定額</span><strong>${formatCurrency(statement.transferAmount)}</strong></div>
-              </div>
-            </div>
-          `
-      }
+        <div class="summary-col">
+          <div class="summary-box"><span>売上帯</span><strong>${escapeHtml(statement.appliedBandLabel)}</strong></div>
+          <div class="summary-box"><span>調整額</span><strong>${formatCurrency(statement.adjustment)}</strong></div>
+          <div class="summary-box"><span>振込予定額</span><strong>${formatCurrency(statement.transferAmount)}</strong></div>
+        </div>
+      </div>
 
       <div class="final-box">
         <span>月報酬総額</span>
@@ -587,9 +573,10 @@ function openPrintWindow(title: string, statements: StatementData[]) {
           @page { size: A4; margin: 10mm; }
           body { margin: 0; font-family: "Yu Gothic", "Yu Gothic UI", sans-serif; color: #0f172a; background: white; }
           .sheet { width: 190mm; margin: 0 auto 8mm; border: 1px solid #d8eaf7; border-radius: 28px; padding: 9mm; box-sizing: border-box; page-break-after: always; }
-          .sheet-head { display: grid; grid-template-columns: 28mm 1fr 44mm; gap: 6mm; align-items: start; }
-          .logo { width: 24mm; height: 24mm; object-fit: contain; }
-          .title-wrap { padding-top: 3mm; text-align: center; }
+          .sheet-head { display: grid; grid-template-columns: 42mm 1fr 44mm; gap: 6mm; align-items: start; }
+          .logo-wrap { display: flex; justify-content: center; align-items: flex-start; }
+          .logo { width: 38mm; max-height: 28mm; object-fit: contain; }
+          .title-wrap { padding-top: 2mm; text-align: center; }
           .title-wrap h2 { margin: 3mm 0 0; font-size: 22px; letter-spacing: .08em; }
           .title-wrap p { margin: 3mm 0 0; font-size: 11px; color: #64748b; }
           .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: .28em; font-size: 10px; color: #94a3b8; }
@@ -608,7 +595,6 @@ function openPrintWindow(title: string, statements: StatementData[]) {
           .white-row td { background: #ffffff; }
           .sheet-table { border: 1px solid #d8eaf7; border-radius: 16px; overflow: hidden; }
           .bottom-grid { display: grid; grid-template-columns: 1fr 48mm; gap: 6mm; margin-top: 7mm; }
-          .summary-only { display: flex; justify-content: flex-end; margin-top: 7mm; }
           .summary-col { display: grid; gap: 3mm; }
           .summary-box strong { display: block; margin-top: 2mm; font-size: 16px; color: #0f172a; }
           .summary-box.right { text-align: right; }
