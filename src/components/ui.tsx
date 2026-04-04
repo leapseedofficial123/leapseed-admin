@@ -170,7 +170,7 @@ export function OverlayPanel({
   }
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50 overscroll-none">
       <button
         type="button"
         aria-label="パネルを閉じる"
@@ -178,9 +178,9 @@ export function OverlayPanel({
         className="absolute inset-0 bg-slate-900/30"
       />
       <div
-        className={`absolute inset-y-0 right-0 w-full max-w-2xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl ${panelClassName}`}
+        className={`absolute inset-y-0 right-0 w-full max-w-full overflow-y-auto bg-white shadow-2xl sm:max-w-2xl sm:border-l sm:border-slate-200 ${panelClassName}`}
       >
-        <div className="sticky top-0 border-b border-slate-200 bg-white px-5 py-4">
+        <div className="sticky top-0 z-20 border-b border-slate-200 bg-white px-4 py-4 sm:px-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
@@ -195,7 +195,9 @@ export function OverlayPanel({
             </button>
           </div>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] sm:p-5">
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -115,7 +115,7 @@ export function CompanyScreen() {
               )
             }
             disabled={!companySummaryRows.length}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >
             会社月次サマリーCSV
           </button>
@@ -128,7 +128,7 @@ export function CompanyScreen() {
               )
             }
             disabled={!filteredMonthlyRows.length}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >
             分析月次CSV
           </button>
@@ -138,7 +138,7 @@ export function CompanyScreen() {
               downloadCsv(`leapseed-deal-ledger-${startMonth}-${endMonth}.csv`, filteredDealRows)
             }
             disabled={!filteredDealRows.length}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >
             成約台帳CSV
           </button>
@@ -240,7 +240,7 @@ export function CompanyScreen() {
       <PageSection title="月別推移" description="絞り込み後の成約だけを月別で確認できます。">
         {analysis.monthlyPoints.some((point) => point.dealCount > 0) ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="min-w-[720px] text-left text-sm">
               <thead className="text-slate-500">
                 <tr>
                   <th className="pb-3 pr-4">月</th>
@@ -334,7 +334,7 @@ export function CompanyScreen() {
       <PageSection title="成約台帳" description="期間内の成約を一覧で確認できます。">
         {analysis.filteredDeals.length ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="min-w-[980px] text-left text-sm">
               <thead className="text-slate-500">
                 <tr>
                   <th className="pb-3 pr-4">対象月</th>

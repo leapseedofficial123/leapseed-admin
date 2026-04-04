@@ -260,7 +260,7 @@ export function DealsScreen() {
           <button
             type="button"
             onClick={openCreatePanel}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800"
+            className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 sm:w-auto"
           >
             成約追加
           </button>
@@ -312,14 +312,14 @@ export function DealsScreen() {
                       <button
                         type="button"
                         onClick={() => openEditPanel(deal.id)}
-                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                        className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white sm:w-auto"
                       >
                         編集
                       </button>
                       <button
                         type="button"
                         onClick={() => deleteDeal(deal.id)}
-                        className="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50"
+                        className="w-full rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50 sm:w-auto"
                       >
                         削除
                       </button>
@@ -481,7 +481,7 @@ export function DealsScreen() {
                     participants: [...current.participants, createParticipant()],
                   }))
                 }
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white sm:w-auto"
               >
                 参加者追加
               </button>
@@ -493,7 +493,7 @@ export function DealsScreen() {
                     participants: createPatternParticipants(current.pattern),
                   }))
                 }
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white sm:w-auto"
               >
                 形態初期値に戻す
               </button>
@@ -617,14 +617,14 @@ export function DealsScreen() {
           <button
             type="button"
             onClick={handleSubmit}
-            className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm text-white transition hover:bg-slate-800"
+            className="w-full rounded-lg bg-slate-900 px-5 py-2.5 text-sm text-white transition hover:bg-slate-800 sm:w-auto"
           >
             {form.id ? "更新" : "成約追加"}
           </button>
           <button
             type="button"
             onClick={closePanel}
-            className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm text-slate-700 transition hover:bg-slate-100"
+            className="w-full rounded-lg border border-slate-300 px-5 py-2.5 text-sm text-slate-700 transition hover:bg-slate-100 sm:w-auto"
           >
             キャンセル
           </button>

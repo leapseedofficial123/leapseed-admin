@@ -269,21 +269,21 @@ export function MembersScreen() {
                         <button
                           type="button"
                           onClick={() => openHistoryPanel(member.id)}
-                          className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                          className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white sm:w-auto"
                         >
                           履歴
                         </button>
                         <button
                           type="button"
                           onClick={() => openEditPanel(member.id)}
-                          className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                          className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white sm:w-auto"
                         >
                           編集
                         </button>
                         <button
                           type="button"
                           onClick={() => deleteMember(member.id)}
-                          className="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50"
+                          className="w-full rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50 sm:w-auto"
                         >
                           削除
                         </button>
@@ -406,14 +406,14 @@ export function MembersScreen() {
           <button
             type="button"
             onClick={handleSubmit}
-            className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm text-white transition hover:bg-slate-800"
+            className="w-full rounded-lg bg-slate-900 px-5 py-2.5 text-sm text-white transition hover:bg-slate-800 sm:w-auto"
           >
             保存
           </button>
           <button
             type="button"
             onClick={closePanel}
-            className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm text-slate-700 transition hover:bg-slate-100"
+            className="w-full rounded-lg border border-slate-300 px-5 py-2.5 text-sm text-slate-700 transition hover:bg-slate-100 sm:w-auto"
           >
             キャンセル
           </button>
@@ -468,7 +468,7 @@ export function MembersScreen() {
                     buildMemberHistoryCsvRows(store, selectedMember.id),
                   )
                 }
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 sm:w-auto"
               >
                 売上履歴CSV
               </button>
@@ -481,7 +481,7 @@ export function MembersScreen() {
                   )
                 }
                 disabled={!selectedMemberCurrentSummary}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
                 選択月の給与明細CSV
               </button>
@@ -518,7 +518,7 @@ export function MembersScreen() {
               <p className="mb-3 text-sm font-semibold text-slate-900">表示期間の年別集計</p>
               {filteredHistory.yearlyRows.length ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
+                  <table className="min-w-[720px] text-left text-sm">
                     <thead className="text-slate-500">
                       <tr>
                         <th className="pb-3 pr-4">年</th>
@@ -557,7 +557,7 @@ export function MembersScreen() {
               <p className="mb-3 text-sm font-semibold text-slate-900">表示期間の月別履歴</p>
               {filteredHistory.monthlyRows.length ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
+                  <table className="min-w-[980px] text-left text-sm">
                     <thead className="text-slate-500">
                       <tr>
                         <th className="pb-3 pr-4">月</th>

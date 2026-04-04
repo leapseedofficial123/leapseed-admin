@@ -235,7 +235,7 @@ function StatementSheet({ statement }: { statement: StatementData }) {
       >
         <div className="grid gap-4 lg:grid-cols-[160px_1fr_214px] lg:items-start">
           <div className="flex justify-center pt-1 lg:justify-start">
-            <div className="isolate rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="rounded-2xl bg-white px-4 py-3">
               <BrandLogo width={138} priority className="mx-auto lg:mx-0" />
             </div>
           </div>
@@ -794,7 +794,7 @@ export function StatementsScreen() {
                 setPreviewId("");
                 setShowTemplatePreview(true);
               }}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 sm:w-auto"
             >
               空テンプレートを開く
             </button>
@@ -802,7 +802,7 @@ export function StatementsScreen() {
               type="button"
               onClick={() => openPrintWindow(`${selectedMonth}-給与明細一括`, statements)}
               disabled={!statements.length}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
             >
               今月分を一括でPDF保存 / 印刷
             </button>
@@ -830,12 +830,12 @@ export function StatementsScreen() {
                         setShowTemplatePreview(false);
                         setPreviewId(statement.memberId);
                       }}
-                      className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                      className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white sm:w-auto"
                     >
                       明細を見る
                     </button>
-                    <button type="button" onClick={() => openPrintWindow(`${statement.memberName}-${statement.month}-給与明細`, [statement])} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white">PDF保存 / 印刷</button>
-                    <button type="button" onClick={() => downloadCsv(`leapseed-statement-${selectedMonth}-${statement.memberName}.csv`, buildMemberStatementCsvRows(store, selectedMonth, statement.memberId))} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white">明細CSV</button>
+                    <button type="button" onClick={() => openPrintWindow(`${statement.memberName}-${statement.month}-給与明細`, [statement])} className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white sm:w-auto">PDF保存 / 印刷</button>
+                    <button type="button" onClick={() => downloadCsv(`leapseed-statement-${selectedMonth}-${statement.memberName}.csv`, buildMemberStatementCsvRows(store, selectedMonth, statement.memberId))} className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white sm:w-auto">明細CSV</button>
                   </div>
                 </div>
               </div>
@@ -924,7 +924,7 @@ export function StatementsScreen() {
           setPreviewId("");
           setShowTemplatePreview(false);
         }}
-        panelClassName="max-w-[min(96vw,1080px)]"
+        panelClassName="max-w-full sm:max-w-[min(96vw,1080px)]"
       >
         {activePreview ? (
           <div className="space-y-5">
@@ -939,7 +939,7 @@ export function StatementsScreen() {
                     [activePreview],
                   )
                 }
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800"
+                className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 sm:w-auto"
               >
                 PDF保存 / 印刷
               </button>
@@ -952,7 +952,7 @@ export function StatementsScreen() {
                       buildMemberStatementCsvRows(store, selectedMonth, activePreview.memberId),
                     )
                   }
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 sm:w-auto"
                 >
                   明細CSV
                 </button>

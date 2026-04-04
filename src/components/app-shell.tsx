@@ -199,6 +199,33 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
+      <div className="border-b border-slate-200 bg-white sm:hidden">
+        <div className="overflow-x-auto px-4 py-3">
+          <div className="flex w-max items-center gap-2">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+              {getRangeLabel(selectedMonth, analysisRangeMode)}
+            </span>
+            {primaryItems.map((item) => {
+              const active = pathname === item.href;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-full px-3 py-1.5 text-xs transition ${
+                    active
+                      ? "bg-slate-900 text-white"
+                      : "border border-slate-200 bg-white text-slate-700"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {menuOpen ? (
         <div className="fixed inset-x-0 bottom-0 top-16 z-40">
           <button
@@ -207,7 +234,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClick={() => setMenuOpen(false)}
             className="absolute inset-0 bg-slate-900/35"
           />
-          <aside className="absolute inset-y-0 left-0 w-[84vw] max-w-[320px] overflow-y-auto border-r border-slate-200 bg-white shadow-2xl">
+          <aside className="absolute inset-y-0 left-0 w-[92vw] max-w-[360px] overflow-y-auto border-r border-slate-200 bg-white shadow-2xl">
             {sidebar}
           </aside>
         </div>
