@@ -132,6 +132,30 @@ function buildDisplayRows(statement: StatementData) {
   return rows;
 }
 
+function buildOtherRewardRows(statement: StatementData) {
+  const rows: Array<[string, string, string, string]> = [];
+
+  if (statement.executiveReward > 0) {
+    rows.push([
+      String(rows.length + 1),
+      "マネージャー報酬",
+      "-",
+      formatCurrency(statement.executiveReward),
+    ]);
+  }
+
+  if (statement.referralReward > 0) {
+    rows.push([
+      String(rows.length + 1),
+      "直紹介報酬",
+      "-",
+      formatCurrency(statement.referralReward),
+    ]);
+  }
+
+  return rows;
+}
+
 function SummaryBar({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3">
@@ -183,10 +207,7 @@ function SupplementTable({
 
 function StatementSheet({ statement }: { statement: StatementData }) {
   const rows = buildDisplayRows(statement);
-  const otherRows = [
-    ["1", "マネージャー報酬", "-", formatCurrency(statement.executiveReward)],
-    ["2", "直紹介報酬", "-", formatCurrency(statement.referralReward)],
-  ];
+  const otherRows = buildOtherRewardRows(statement);
 
   return (
     <div className="overflow-x-auto">
@@ -267,40 +288,50 @@ function StatementSheet({ statement }: { statement: StatementData }) {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_240px]">
-          <div>
-            <p className="mb-3 text-sm font-semibold text-slate-900">その他報酬</p>
-            <div className="overflow-hidden rounded-2xl border border-sky-100">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-[#d6eefc] text-slate-700">
-                  <tr>
-                    <th className="px-3 py-3">No.</th>
-                    <th className="px-3 py-3">名前</th>
-                    <th className="px-3 py-3">報酬率</th>
-                    <th className="px-3 py-3">報酬</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {otherRows.map((row, index) => (
-                    <tr key={row[0]} className={index % 2 === 0 ? "bg-[#eef9ff]" : "bg-white"}>
-                      {row.map((cell) => (
-                        <td key={`${row[0]}_${cell}`} className="px-3 py-3">
-                          {cell}
-                        </td>
-                      ))}
+        {otherRows.length ? (
+          <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_240px]">
+            <div>
+              <p className="mb-3 text-sm font-semibold text-slate-900">その他報酬</p>
+              <div className="overflow-hidden rounded-2xl border border-sky-100">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-[#d6eefc] text-slate-700">
+                    <tr>
+                      <th className="px-3 py-3">No.</th>
+                      <th className="px-3 py-3">名前</th>
+                      <th className="px-3 py-3">報酬率</th>
+                      <th className="px-3 py-3">報酬</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {otherRows.map((row, index) => (
+                      <tr key={row[0]} className={index % 2 === 0 ? "bg-[#eef9ff]" : "bg-white"}>
+                        {row.map((cell) => (
+                          <td key={`${row[0]}_${cell}`} className="px-3 py-3">
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <SummaryBar label="売上帯" value={statement.appliedBandLabel} />
+              <SummaryBar label="調整額" value={formatCurrency(statement.adjustment)} />
+              <SummaryBar label="振込予定額" value={formatCurrency(statement.transferAmount)} />
             </div>
           </div>
-
-          <div className="space-y-3">
-            <SummaryBar label="売上帯" value={statement.appliedBandLabel} />
-            <SummaryBar label="調整額" value={formatCurrency(statement.adjustment)} />
-            <SummaryBar label="振込予定額" value={formatCurrency(statement.transferAmount)} />
+        ) : (
+          <div className="mt-8 lg:flex lg:justify-end">
+            <div className="space-y-3 lg:w-[240px]">
+              <SummaryBar label="売上帯" value={statement.appliedBandLabel} />
+              <SummaryBar label="調整額" value={formatCurrency(statement.adjustment)} />
+              <SummaryBar label="振込予定額" value={formatCurrency(statement.transferAmount)} />
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="mt-8 rounded-[20px] bg-[#84c9ec] px-6 py-5 text-center text-slate-900">
           <p className="text-sm tracking-[0.22em] text-slate-700">月報酬総額</p>
@@ -403,10 +434,7 @@ function printTableHtml(title: string, headers: string[], rows: Array<Array<stri
 
 function renderStatementSheetHtml(statement: StatementData, origin: string) {
   const rows = buildDisplayRows(statement);
-  const otherRows = [
-    ["1", "マネージャー報酬", "-", formatCurrency(statement.executiveReward)],
-    ["2", "直紹介報酬", "-", formatCurrency(statement.referralReward)],
-  ];
+  const otherRows = buildOtherRewardRows(statement);
 
   return `
     <div class="sheet">
@@ -453,35 +481,49 @@ function renderStatementSheetHtml(statement: StatementData, origin: string) {
         </table>
       </section>
 
-      <div class="bottom-grid">
-        <section class="section">
-          <strong>その他報酬</strong>
-          <table class="sheet-table small">
-            <thead>
-              <tr>
-                <th>No.</th><th>名前</th><th>報酬率</th><th>報酬</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${otherRows
-                .map(
-                  (row, index) => `
-                    <tr class="${index % 2 === 0 ? "blue-row" : "white-row"}">
-                      ${row.map((cell) => `<td>${cell}</td>`).join("")}
+      ${
+        otherRows.length
+          ? `
+            <div class="bottom-grid">
+              <section class="section">
+                <strong>その他報酬</strong>
+                <table class="sheet-table small">
+                  <thead>
+                    <tr>
+                      <th>No.</th><th>名前</th><th>報酬率</th><th>報酬</th>
                     </tr>
-                  `,
-                )
-                .join("")}
-            </tbody>
-          </table>
-        </section>
+                  </thead>
+                  <tbody>
+                    ${otherRows
+                      .map(
+                        (row, index) => `
+                          <tr class="${index % 2 === 0 ? "blue-row" : "white-row"}">
+                            ${row.map((cell) => `<td>${cell}</td>`).join("")}
+                          </tr>
+                        `,
+                      )
+                      .join("")}
+                  </tbody>
+                </table>
+              </section>
 
-        <div class="summary-col">
-          <div class="summary-box"><span>売上帯</span><strong>${escapeHtml(statement.appliedBandLabel)}</strong></div>
-          <div class="summary-box"><span>調整額</span><strong>${formatCurrency(statement.adjustment)}</strong></div>
-          <div class="summary-box"><span>振込予定額</span><strong>${formatCurrency(statement.transferAmount)}</strong></div>
-        </div>
-      </div>
+              <div class="summary-col">
+                <div class="summary-box"><span>売上帯</span><strong>${escapeHtml(statement.appliedBandLabel)}</strong></div>
+                <div class="summary-box"><span>調整額</span><strong>${formatCurrency(statement.adjustment)}</strong></div>
+                <div class="summary-box"><span>振込予定額</span><strong>${formatCurrency(statement.transferAmount)}</strong></div>
+              </div>
+            </div>
+          `
+          : `
+            <div class="summary-only">
+              <div class="summary-col">
+                <div class="summary-box"><span>売上帯</span><strong>${escapeHtml(statement.appliedBandLabel)}</strong></div>
+                <div class="summary-box"><span>調整額</span><strong>${formatCurrency(statement.adjustment)}</strong></div>
+                <div class="summary-box"><span>振込予定額</span><strong>${formatCurrency(statement.transferAmount)}</strong></div>
+              </div>
+            </div>
+          `
+      }
 
       <div class="final-box">
         <span>月報酬総額</span>
@@ -566,6 +608,7 @@ function openPrintWindow(title: string, statements: StatementData[]) {
           .white-row td { background: #ffffff; }
           .sheet-table { border: 1px solid #d8eaf7; border-radius: 16px; overflow: hidden; }
           .bottom-grid { display: grid; grid-template-columns: 1fr 48mm; gap: 6mm; margin-top: 7mm; }
+          .summary-only { display: flex; justify-content: flex-end; margin-top: 7mm; }
           .summary-col { display: grid; gap: 3mm; }
           .summary-box strong { display: block; margin-top: 2mm; font-size: 16px; color: #0f172a; }
           .summary-box.right { text-align: right; }
@@ -751,45 +794,6 @@ export function StatementsScreen() {
           </div>
         }
       >
-        <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-900">記載プレビュー</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
-                実際にどこへ数字や名前が入るのかを、空のテンプレートで先に確認できます。
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setPreviewId("");
-                  setShowTemplatePreview(true);
-                }}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
-              >
-                大きく見る
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  openPrintWindow(`${selectedMonth}-給与明細テンプレート`, [templatePreview])
-                }
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
-              >
-                PDF保存 / 印刷
-              </button>
-            </div>
-          </div>
-          <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
-            <div className="origin-top scale-[0.72] sm:scale-[0.82] lg:scale-[0.9]">
-              <div className="-mb-20 -ml-28 -mr-28 sm:-mb-14 sm:-ml-16 sm:-mr-16 lg:-mb-8 lg:-ml-8 lg:-mr-8">
-                <StatementSheet statement={templatePreview} />
-              </div>
-            </div>
-          </div>
-        </div>
-
         {statements.length ? (
           <div className="space-y-3">
             {statements.map((statement) => (

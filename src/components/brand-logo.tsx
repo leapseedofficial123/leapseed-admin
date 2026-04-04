@@ -39,8 +39,8 @@ export function BrandLogo({
 }) {
   return (
     <span
-      className={`relative block shrink-0 overflow-hidden ${className}`}
-      style={{ width, aspectRatio: "450 / 390" }}
+      className={`relative flex shrink-0 items-center justify-center overflow-hidden ${className}`}
+      style={{ width, aspectRatio: "337 / 240" }}
     >
       <Image
         src="/branding/leapseed-logo.png"
@@ -48,7 +48,7 @@ export function BrandLogo({
         fill
         priority={priority}
         sizes={`${width}px`}
-        className="object-contain"
+        className="object-contain object-center"
       />
     </span>
   );
