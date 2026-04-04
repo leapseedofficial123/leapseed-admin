@@ -84,7 +84,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-200 px-5 py-5">
-        <BrandLogo width={150} height={78} priority />
+        <BrandLogo size={44} priority />
         <h1 className="mt-3 text-lg font-semibold tracking-tight text-slate-900">{APP_TITLE}</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           毎月使う画面を上に、設定や分析を下にまとめています。
@@ -179,7 +179,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             ) : null}
 
             <div className="flex items-center gap-3">
-              <BrandLogo width={96} height={48} />
+              <BrandLogo size={38} />
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
                   LeapSeed Payroll

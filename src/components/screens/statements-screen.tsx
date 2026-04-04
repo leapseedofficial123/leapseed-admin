@@ -26,7 +26,7 @@ import {
 } from "@/lib/format";
 import { createId } from "@/lib/ids";
 
-const SHEET_WIDTH = 980;
+const SHEET_WIDTH = 820;
 const STATEMENT_ROW_COUNT = 10;
 
 interface ExpenseFormState {
@@ -161,14 +161,16 @@ function StatementSheet({ statement }: { statement: StatementData }) {
 
   return (
     <div className="overflow-x-auto">
-      <div className="mx-auto rounded-[28px] border border-sky-100 bg-white p-8 shadow-sm" style={{ width: SHEET_WIDTH }}>
-        <div className="grid grid-cols-[240px_1fr_230px] items-start gap-6">
+      <div className="mx-auto w-full rounded-[28px] border border-sky-100 bg-white p-6 shadow-sm md:p-7" style={{ maxWidth: SHEET_WIDTH }}>
+        <div className="grid gap-5 lg:grid-cols-[92px_1fr_220px] lg:items-start">
           <div className="pt-1">
-            <BrandLogo width={170} height={92} priority />
+            <BrandLogo size={72} priority />
           </div>
-          <div className="pt-4 text-center">
+          <div className="pt-1 text-center lg:pt-4">
             <p className="text-xs uppercase tracking-[0.32em] text-slate-400">Statement</p>
-            <h2 className="mt-3 text-[28px] font-semibold tracking-[0.08em] text-slate-900">報酬明細</h2>
+            <h2 className="mt-3 text-[24px] font-semibold tracking-[0.08em] text-slate-900 md:text-[28px]">
+              報酬明細
+            </h2>
             <p className="mt-3 text-sm text-slate-500">
               {formatMonthLabel(statement.month)} / 発行日 {formatDateLabel(statement.issueDate)}
             </p>
@@ -236,7 +238,7 @@ function StatementSheet({ statement }: { statement: StatementData }) {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_260px]">
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_240px]">
           <div>
             <p className="mb-3 text-sm font-semibold text-slate-900">その他報酬</p>
             <div className="overflow-hidden rounded-2xl border border-sky-100">
@@ -380,7 +382,7 @@ function renderStatementSheetHtml(statement: StatementData, origin: string) {
   return `
     <div class="sheet">
       <div class="sheet-head">
-        <div class="logo-wrap"><img class="logo" src="${origin}/branding/leapseed-logo.png" alt="LeapSeed" /></div>
+        <div class="logo-wrap"><img class="logo" src="${origin}/branding/leapseed-mark.png" alt="LeapSeed" /></div>
         <div class="title-wrap">
           <p class="eyebrow">Statement</p>
           <h2>報酬明細</h2>
@@ -514,8 +516,8 @@ function openPrintWindow(title: string, statements: StatementData[]) {
           @page { size: A4; margin: 10mm; }
           body { margin: 0; font-family: "Yu Gothic", "Yu Gothic UI", sans-serif; color: #0f172a; background: white; }
           .sheet { width: 190mm; margin: 0 auto 8mm; border: 1px solid #d8eaf7; border-radius: 28px; padding: 9mm; box-sizing: border-box; page-break-after: always; }
-          .sheet-head { display: grid; grid-template-columns: 46mm 1fr 44mm; gap: 6mm; align-items: start; }
-          .logo { width: 42mm; height: auto; }
+          .sheet-head { display: grid; grid-template-columns: 28mm 1fr 44mm; gap: 6mm; align-items: start; }
+          .logo { width: 24mm; height: 24mm; object-fit: contain; }
           .title-wrap { padding-top: 3mm; text-align: center; }
           .title-wrap h2 { margin: 3mm 0 0; font-size: 22px; letter-spacing: .08em; }
           .title-wrap p { margin: 3mm 0 0; font-size: 11px; color: #64748b; }
@@ -798,6 +800,7 @@ export function StatementsScreen() {
         title={preview ? `${preview.memberName} の給与明細` : "給与明細"}
         description="このプレビューのまま、PDF保存や印刷へ進めます。"
         onClose={() => setPreviewId("")}
+        panelClassName="max-w-[min(96vw,1080px)]"
       >
         {preview ? (
           <div className="space-y-5">

@@ -38,7 +38,7 @@ export function DashboardScreen() {
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <BrandLogo width={150} height={78} />
+            <BrandLogo size={56} />
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
                 <Badge tone="teal">基準月 {formatMonthLabel(selectedMonth)}</Badge>

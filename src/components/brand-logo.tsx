@@ -3,22 +3,27 @@
 import Image from "next/image";
 
 export function BrandLogo({
-  width = 152,
-  height = 82,
+  size = 44,
   priority,
+  className = "",
 }: {
-  width?: number;
-  height?: number;
+  size?: number;
   priority?: boolean;
+  className?: string;
 }) {
   return (
-    <Image
-      src="/branding/leapseed-logo.png"
-      alt="LeapSeed"
-      width={width}
-      height={height}
-      priority={priority}
-      className="h-auto w-auto object-contain"
-    />
+    <span
+      className={`relative block shrink-0 overflow-hidden rounded-xl ${className}`}
+      style={{ width: size, height: size }}
+    >
+      <Image
+        src="/branding/leapseed-mark.png"
+        alt="LeapSeed"
+        fill
+        priority={priority}
+        sizes={`${size}px`}
+        className="object-contain"
+      />
+    </span>
   );
 }

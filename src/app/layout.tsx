@@ -20,8 +20,8 @@ export const metadata: Metadata = {
   title: "LeapSeed 給与計算サイト",
   description: "LeapSeed の成約入力、給与明細、月次分析をまとめて管理するアプリです。",
   icons: {
-    icon: "/branding/leapseed-logo.png",
-    apple: "/branding/leapseed-logo.png",
+    icon: "/branding/leapseed-mark.png",
+    apple: "/branding/leapseed-mark.png",
   },
 };
 

@@ -139,12 +139,14 @@ export function OverlayPanel({
   description,
   onClose,
   children,
+  panelClassName = "",
 }: {
   open: boolean;
   title: string;
   description?: string;
   onClose: () => void;
   children: ReactNode;
+  panelClassName?: string;
 }) {
   if (!open) {
     return null;
@@ -158,7 +160,9 @@ export function OverlayPanel({
         onClick={onClose}
         className="absolute inset-0 bg-slate-900/30"
       />
-      <div className="absolute inset-y-0 right-0 w-full max-w-2xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
+      <div
+        className={`absolute inset-y-0 right-0 w-full max-w-2xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl ${panelClassName}`}
+      >
         <div className="sticky top-0 border-b border-slate-200 bg-white px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div>
