@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, Noto_Sans_JP } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import { AppStateProvider } from "@/context/app-state-context";
+import { withBasePath } from "@/lib/base-path";
 import "./globals.css";
 
 const notoSansJp = Noto_Sans_JP({
@@ -19,28 +20,28 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "LeapSeed給与計算",
   description: "LeapSeedの成約入力、給与明細、月次分析をまとめて管理するアプリです。",
-  manifest: "/manifest.webmanifest",
+  manifest: withBasePath("/manifest.webmanifest"),
   icons: {
     icon: [
       {
-        url: "/branding/leapseed-home-icon-192.png",
+        url: withBasePath("/branding/leapseed-home-icon-192.png"),
         sizes: "192x192",
         type: "image/png",
       },
       {
-        url: "/branding/leapseed-home-icon-512.png",
+        url: withBasePath("/branding/leapseed-home-icon-512.png"),
         sizes: "512x512",
         type: "image/png",
       },
     ],
     apple: [
       {
-        url: "/branding/leapseed-apple-touch-icon.png",
+        url: withBasePath("/branding/leapseed-apple-touch-icon.png"),
         sizes: "180x180",
         type: "image/png",
       },
     ],
-    shortcut: ["/branding/leapseed-home-icon-192.png"],
+    shortcut: [withBasePath("/branding/leapseed-home-icon-192.png")],
   },
 };
 

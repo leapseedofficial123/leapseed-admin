@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { withBasePath } from "@/lib/base-path";
 
 export function BrandMark({
   size = 44,
@@ -17,7 +18,7 @@ export function BrandMark({
       style={{ width: size, height: size }}
     >
       <Image
-        src="/branding/leapseed-mark.png"
+        src={withBasePath("/branding/leapseed-mark.png")}
         alt="LeapSeed"
         fill
         priority={priority}
@@ -43,7 +44,7 @@ export function BrandLogo({
       style={{ width, aspectRatio: "337 / 240" }}
     >
       <Image
-        src="/branding/leapseed-logo.png"
+        src={withBasePath("/branding/leapseed-logo.png")}
         alt="LeapSeed"
         fill
         priority={priority}

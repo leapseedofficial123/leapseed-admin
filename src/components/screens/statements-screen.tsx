@@ -12,6 +12,7 @@ import {
   StatCard,
 } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
+import { withBasePath } from "@/lib/base-path";
 import { downloadCsv } from "@/lib/csv";
 import { getToday } from "@/lib/date";
 import { buildMemberStatementCsvRows } from "@/lib/domain/exports";
@@ -451,14 +452,14 @@ function printTableHtml(title: string, headers: string[], rows: Array<Array<stri
   `;
 }
 
-function renderStatementSheetHtml(statement: StatementData, origin: string) {
+function renderStatementSheetHtml(statement: StatementData, assetOrigin: string) {
   const rows = buildDisplayRows(statement);
   const otherRows = buildOtherRewardTableRows(statement);
 
   return `
     <div class="sheet sheet-main">
       <div class="sheet-head">
-        <div class="logo-wrap"><div class="logo-card"><img class="logo" src="${origin}/branding/leapseed-logo.png" alt="LeapSeed" /></div></div>
+        <div class="logo-wrap"><div class="logo-card"><img class="logo" src="${assetOrigin}${withBasePath("/branding/leapseed-logo.png")}" alt="LeapSeed" /></div></div>
         <div class="title-wrap">
           <p class="eyebrow">Statement</p>
           <h2>報酬明細</h2>
@@ -581,6 +582,7 @@ function openPrintWindow(title: string, statements: StatementData[]) {
     return;
   }
   const origin = window.location.origin;
+  const assetOrigin = window.location.origin;
 
   nextWindow.document.write(`
     <html lang="ja">
@@ -636,7 +638,7 @@ function openPrintWindow(title: string, statements: StatementData[]) {
       <body>${statements
         .map(
           (statement) =>
-            `<section class="statement-bundle">${renderStatementSheetHtml(statement, origin)}${renderSupplementHtml(statement)}</section>`,
+            `<section class="statement-bundle">${renderStatementSheetHtml(statement, assetOrigin)}${renderSupplementHtml(statement)}</section>`,
         )
         .join("")}</body>
     </html>
