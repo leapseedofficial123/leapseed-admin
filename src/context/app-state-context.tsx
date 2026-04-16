@@ -4,6 +4,8 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -14,7 +16,15 @@ import {
   getTrackedMonths,
 } from "@/lib/domain/payroll";
 import { createId } from "@/lib/ids";
-import { createBrowserRepository } from "@/lib/repository/app-repository";
+import {
+  FunctionApiError,
+  fetchSharedStore as fetchSharedStoreRequest,
+  saveSharedStore as saveSharedStoreRequest,
+} from "@/lib/netlify-functions";
+import {
+  createBrowserRepository,
+  normalizeStore,
+} from "@/lib/repository/app-repository";
 import type {
   AnalysisRangeMode,
   AppDataStore,
@@ -31,6 +41,7 @@ import type {
   SalaryAdjustment,
   StatementAdjustment,
 } from "@/types/app";
+import { useAuth } from "@/context/auth-context";
 
 interface DraftParticipant extends Omit<DealParticipant, "id" | "dealId"> {
   id?: string;
@@ -49,6 +60,9 @@ interface AppStateContextValue {
   analysisMonths: string[];
   currentSnapshot: MonthlyPayrollSnapshot;
   companyTrend: ReturnType<typeof buildCompanyTrend>;
+  isStoreReady: boolean;
+  isSyncing: boolean;
+  syncError: string;
   setSelectedMonth: (month: string) => void;
   setAnalysisRangeMode: (mode: AnalysisRangeMode) => void;
   saveMember: (member: Member) => void;
@@ -124,15 +138,104 @@ function normalizePreferenceMonth(store: AppDataStore): AppDataStore {
   };
 }
 
+function prepareStore(store: AppDataStore) {
+  return ensureMonthlySetting(normalizePreferenceMonth(store));
+}
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [repository] = useState(createBrowserRepository);
-  const [store, setStore] = useState<AppDataStore>(() =>
-    ensureMonthlySetting(normalizePreferenceMonth(repository.load())),
-  );
+  const initialStore = useMemo(() => prepareStore(repository.load()), [repository]);
+  const [store, setStore] = useState<AppDataStore>(initialStore);
+  const [isRemoteLoaded, setIsRemoteLoaded] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState("");
+  const remoteSnapshotRef = useRef(JSON.stringify(initialStore));
+  const { user, isReady: isAuthReady, refreshSession } = useAuth();
 
   useEffect(() => {
     repository.save(store);
   }, [repository, store]);
+
+  useEffect(() => {
+    if (!isAuthReady) {
+      return;
+    }
+
+    if (!user) {
+      setIsRemoteLoaded(true);
+      setIsSyncing(false);
+      setSyncError("");
+      return;
+    }
+
+    let cancelled = false;
+    setIsRemoteLoaded(false);
+    setSyncError("");
+
+    void fetchSharedStoreRequest()
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+
+        const nextStore = prepareStore(normalizeStore(response.store));
+        remoteSnapshotRef.current = JSON.stringify(nextStore);
+        repository.save(nextStore);
+        setStore(nextStore);
+        setIsRemoteLoaded(true);
+      })
+      .catch(async (error) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (error instanceof FunctionApiError && error.status === 401) {
+          await refreshSession();
+        }
+
+        setSyncError(error instanceof Error ? error.message : "共有データを読み込めませんでした。");
+        setIsRemoteLoaded(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthReady, refreshSession, repository, user]);
+
+  useEffect(() => {
+    if (!user || !isRemoteLoaded) {
+      return;
+    }
+
+    const serializedStore = JSON.stringify(store);
+    if (serializedStore === remoteSnapshotRef.current) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        setIsSyncing(true);
+
+        try {
+          await saveSharedStoreRequest(store);
+          remoteSnapshotRef.current = serializedStore;
+          setSyncError("");
+        } catch (error) {
+          if (error instanceof FunctionApiError && error.status === 401) {
+            await refreshSession();
+          }
+
+          setSyncError(error instanceof Error ? error.message : "共有データを保存できませんでした。");
+        } finally {
+          setIsSyncing(false);
+        }
+      })();
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isRemoteLoaded, refreshSession, store, user]);
 
   const selectedMonth = store.preferences.displayMonth;
   const currentSnapshot = buildMonthlyPayroll(store, selectedMonth);
@@ -140,6 +243,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const trackedMonths = getTrackedMonths(store);
   const analysisRangeMode = store.preferences.analysisRangeMode;
   const analysisMonths = sortMonths(getRangeMonths(selectedMonth, analysisRangeMode));
+  const isStoreReady = !user || isRemoteLoaded;
 
   const value: AppStateContextValue = {
     store,
@@ -149,9 +253,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     analysisMonths,
     currentSnapshot,
     companyTrend,
+    isStoreReady,
+    isSyncing,
+    syncError,
     setSelectedMonth(month) {
       setStore((current) =>
-        ensureMonthlySetting({
+        prepareStore({
           ...current,
           preferences: {
             ...current.preferences,
@@ -161,14 +268,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       );
     },
     setAnalysisRangeMode(mode) {
-      setStore((current) => ({
-        ...current,
-        preferences: {
-          ...current.preferences,
-          displayMonth: getRangeStartMonth(current.preferences.displayMonth, mode),
-          analysisRangeMode: mode,
-        },
-      }));
+      setStore((current) =>
+        prepareStore({
+          ...current,
+          preferences: {
+            ...current.preferences,
+            displayMonth: getRangeStartMonth(current.preferences.displayMonth, mode),
+            analysisRangeMode: mode,
+          },
+        }),
+      );
     },
     saveMember(member) {
       setStore((current) => ({
@@ -375,10 +484,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       return repository.export(store);
     },
     importJson(raw) {
-      setStore(ensureMonthlySetting(normalizePreferenceMonth(repository.import(raw))));
+      const nextStore = prepareStore(repository.import(raw));
+      setStore(nextStore);
     },
     resetData(mode) {
-      setStore(ensureMonthlySetting(normalizePreferenceMonth(repository.reset(mode))));
+      const nextStore = prepareStore(repository.reset(mode));
+      setStore(nextStore);
     },
   };
 

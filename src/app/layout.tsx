@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Noto_Sans_JP } from "next/font/google";
+import { AuthGate } from "@/components/auth/auth-gate";
 import { AppShell } from "@/components/app-shell";
 import { AppStateProvider } from "@/context/app-state-context";
+import { AuthProvider } from "@/context/auth-context";
 import { withBasePath } from "@/lib/base-path";
+import { APP_TITLE } from "@/lib/constants";
 import "./globals.css";
 
 const notoSansJp = Noto_Sans_JP({
@@ -18,8 +21,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LeapSeed給与計算",
-  description: "LeapSeedの成約入力、給与明細、月次分析をまとめて管理するアプリです。",
+  title: APP_TITLE,
+  description: "LeapSeedの共有ログイン対応給与計算アプリです。",
   manifest: withBasePath("/manifest.webmanifest"),
   icons: {
     icon: [
@@ -56,9 +59,13 @@ export default function RootLayout({
       className={`${notoSansJp.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
-        <AppStateProvider>
-          <AppShell>{children}</AppShell>
-        </AppStateProvider>
+        <AuthProvider>
+          <AppStateProvider>
+            <AuthGate>
+              <AppShell>{children}</AppShell>
+            </AuthGate>
+          </AppStateProvider>
+        </AuthProvider>
       </body>
     </html>
   );

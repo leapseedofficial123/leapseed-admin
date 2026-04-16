@@ -102,11 +102,7 @@ export function getRangeAnchorMonths(
   mode: AnalysisRangeMode,
   fallbackMonth?: string,
 ): string[] {
-  const sourceMonths = months.length
-    ? months
-    : fallbackMonth
-      ? [fallbackMonth]
-      : [];
+  const sourceMonths = months.length ? months : fallbackMonth ? [fallbackMonth] : [];
 
   if (!sourceMonths.length) {
     return [];

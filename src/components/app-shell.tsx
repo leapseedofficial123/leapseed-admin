@@ -3,10 +3,11 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { Input } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
+import { useAuth } from "@/context/auth-context";
 import { ANALYSIS_RANGE_OPTIONS, APP_TITLE } from "@/lib/constants";
 import { getRangeLabel } from "@/lib/date";
 import type { AnalysisRangeMode } from "@/types/app";
@@ -69,8 +70,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { selectedMonth, setSelectedMonth, analysisRangeMode, setAnalysisRangeMode } =
-    useAppState();
+  const {
+    selectedMonth,
+    setSelectedMonth,
+    analysisRangeMode,
+    setAnalysisRangeMode,
+    isSyncing,
+    syncError,
+  } = useAppState();
+  const { user, logout } = useAuth();
+
+  const settingsItems = useMemo(
+    () =>
+      user?.role === "owner"
+        ? [...secondaryItems, { href: "/access", label: "アクセス管理" }]
+        : secondaryItems,
+    [user?.role],
+  );
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -81,22 +97,29 @@ export function AppShell({ children }: { children: ReactNode }) {
     router.push("/");
   };
 
+  const handleLogout = async () => {
+    await logout();
+    setMenuOpen(false);
+  };
+
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="border-b border-slate-200 px-5 py-5">
         <BrandLogo width={132} priority className="mx-auto" />
-        <h1 className="mt-3 text-lg font-semibold tracking-tight text-slate-900">{APP_TITLE}</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          毎月使う画面を上に、設定や分析を下にまとめています。
+        <h1 className="mt-3 text-center text-lg font-semibold tracking-tight text-slate-900">
+          {APP_TITLE}
+        </h1>
+        <p className="mt-2 text-center text-sm leading-6 text-slate-600">
+          共有ログインで同じデータを確認できる給与計算画面です。
         </p>
       </div>
 
       <div className="space-y-5 px-5 py-5">
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-sm font-semibold text-slate-900">対象期間</p>
+          <p className="text-sm font-semibold text-slate-900">表示基準</p>
           <div className="mt-4 space-y-4">
             <div>
-              <p className="mb-2 text-sm font-medium text-slate-700">期間区分</p>
+              <p className="mb-2 text-sm font-medium text-slate-700">対象期間</p>
               <select
                 value={analysisRangeMode}
                 onChange={(event) => setAnalysisRangeMode(event.target.value as AnalysisRangeMode)}
@@ -111,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
 
             <div>
-              <p className="mb-2 text-sm font-medium text-slate-700">表示基準</p>
+              <p className="mb-2 text-sm font-medium text-slate-700">基準月</p>
               <Input
                 type="month"
                 value={selectedMonth}
@@ -124,7 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
 
             <p className="text-xs text-slate-500">
-              表示範囲: {getRangeLabel(selectedMonth, analysisRangeMode)} / 過去の月も直接選択できます
+              表示範囲: {getRangeLabel(selectedMonth, analysisRangeMode)}
             </p>
           </div>
         </div>
@@ -137,10 +160,25 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
         <NavList
           title="Settings"
-          items={secondaryItems}
+          items={settingsItems}
           pathname={pathname}
           onNavigate={() => setMenuOpen(false)}
         />
+      </div>
+
+      <div className="mt-auto border-t border-slate-200 px-5 py-4">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+          <p className="text-sm font-semibold text-slate-900">{user?.name ?? "未ログイン"}</p>
+          <p className="mt-1 text-xs text-slate-500">{user?.email ?? "-"}</p>
+          <p className="mt-2 text-xs text-slate-500">権限: {user?.role ?? "-"}</p>
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="mt-4 w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+          >
+            ログアウト
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -149,7 +187,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-50 h-16 border-b border-slate-200 bg-slate-50/95 backdrop-blur">
         <div className="flex h-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
               aria-label={menuOpen ? "メニューを閉じる" : "メニューを開く"}
@@ -176,19 +214,33 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             ) : null}
 
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <BrandLogo width={76} className="shrink-0" />
-              <div>
-                <p className="font-semibold text-slate-900">{APP_TITLE}</p>
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-slate-900">{APP_TITLE}</p>
+                <p className="hidden text-xs text-slate-500 sm:block">{user?.name ?? ""}</p>
               </div>
             </div>
           </div>
 
-          <div className="hidden text-right sm:block">
-            <p className="text-xs text-slate-500">現在の表示範囲</p>
-            <p className="mt-1 text-sm font-medium text-slate-900">
-              {getRangeLabel(selectedMonth, analysisRangeMode)}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="hidden text-right sm:block">
+              <p className="text-xs text-slate-500">現在の表示範囲</p>
+              <p className="mt-1 text-sm font-medium text-slate-900">
+                {getRangeLabel(selectedMonth, analysisRangeMode)}
+              </p>
+              <p className={`mt-1 text-xs ${syncError ? "text-rose-600" : "text-slate-500"}`}>
+                {syncError ? syncError : isSyncing ? "共有データを同期中" : "共有データ同期済み"}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              className="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 sm:inline-flex"
+            >
+              ログアウト
+            </button>
           </div>
         </div>
       </header>
@@ -217,6 +269,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               );
             })}
           </div>
+          <p className={`mt-2 text-xs ${syncError ? "text-rose-600" : "text-slate-500"}`}>
+            {syncError ? syncError : isSyncing ? "共有データを同期中" : "共有データ同期済み"}
+          </p>
         </div>
       </div>
 

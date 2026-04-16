@@ -47,7 +47,7 @@ function migrateStore(store: AppDataStore, version: number): AppDataStore {
   };
 }
 
-function normalizeStore(raw: unknown): AppDataStore {
+export function normalizeStore(raw: unknown): AppDataStore {
   const fallback = createBlankAppDataStore(getCurrentMonth());
 
   if (!raw || typeof raw !== "object") {

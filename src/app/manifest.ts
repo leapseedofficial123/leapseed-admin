@@ -1,13 +1,14 @@
 import type { MetadataRoute } from "next";
 import { APP_BASE_PATH, withBasePath } from "@/lib/base-path";
+import { APP_TITLE } from "@/lib/constants";
 
 export const dynamic = "force-static";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "LeapSeed給与計算",
+    name: APP_TITLE,
     short_name: "LeapSeed給与",
-    description: "LeapSeedの成約入力、給与明細、月次分析をまとめて管理するアプリです。",
+    description: "LeapSeedの共有ログイン対応給与計算アプリです。",
     start_url: APP_BASE_PATH || "/",
     display: "standalone",
     background_color: "#ffffff",
