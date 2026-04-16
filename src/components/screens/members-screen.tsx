@@ -29,7 +29,7 @@ import {
   toPercentInputString,
 } from "@/lib/format";
 import { createId } from "@/lib/ids";
-import { getRangeAnchorMonths, getRangeLabel, getRangeMonths } from "@/lib/date";
+import { getRangeLabel, getRangeMonths } from "@/lib/date";
 import type { AnalysisRangeMode } from "@/types/app";
 
 interface MemberFormState {
@@ -60,7 +60,6 @@ export function MembersScreen() {
     store,
     selectedMonth,
     setSelectedMonth,
-    trackedMonths,
     analysisRangeMode,
     setAnalysisRangeMode,
     currentSnapshot,
@@ -77,11 +76,6 @@ export function MembersScreen() {
   const selectedMember = store.members.find((member) => member.id === selectedMemberId);
   const selectedMemberCurrentSummary = currentSnapshot.memberSummaries.find(
     (summary) => summary.memberId === selectedMemberId,
-  );
-  const historyRangeAnchors = getRangeAnchorMonths(
-    trackedMonths,
-    analysisRangeMode,
-    selectedMonth,
   );
   const visibleHistoryMonths = getRangeMonths(selectedMonth, analysisRangeMode);
   const selectedMemberHistory = useMemo(
@@ -446,16 +440,14 @@ export function MembersScreen() {
               </div>
               <div>
                 <Label>表示基準</Label>
-                <Select
+                <Input
+                  type="month"
                   value={selectedMonth}
                   onChange={(event) => setSelectedMonth(event.target.value)}
-                >
-                  {historyRangeAnchors.map((month) => (
-                    <option key={month} value={month}>
-                      {getRangeLabel(month, analysisRangeMode)}
-                    </option>
-                  ))}
-                </Select>
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  表示期間: {getRangeLabel(selectedMonth, analysisRangeMode)}
+                </p>
               </div>
             </div>
 

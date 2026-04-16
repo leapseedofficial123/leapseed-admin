@@ -155,7 +155,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           ...current,
           preferences: {
             ...current.preferences,
-            displayMonth: month,
+            displayMonth: getRangeStartMonth(month, current.preferences.analysisRangeMode),
           },
         }),
       );

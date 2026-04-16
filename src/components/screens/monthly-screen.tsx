@@ -149,9 +149,12 @@ export function MonthlyScreen() {
                           <div className="mt-3 space-y-3">
                             {summary.referralDetails.map((detail) => (
                               <div key={detail.referralId} className="rounded-lg bg-white px-4 py-3">
-                                <p className="font-medium text-slate-900">{detail.referredMemberName}</p>
+                                <p className="font-medium text-slate-900">
+                                  被紹介者: {detail.referredMemberName}
+                                </p>
                                 <p className="mt-1 text-sm text-slate-500">
-                                  最終給料 {formatCurrency(detail.referredFinalSalary)} ×{" "}
+                                  {detail.referredMemberName}さんの最終給料{" "}
+                                  {formatCurrency(detail.referredFinalSalary)} ×{" "}
                                   {formatPercent(detail.rate)}
                                 </p>
                                 <p className="mt-2 font-semibold text-slate-900">

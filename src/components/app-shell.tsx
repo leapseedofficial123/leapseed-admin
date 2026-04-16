@@ -5,9 +5,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
+import { Input } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
 import { ANALYSIS_RANGE_OPTIONS, APP_TITLE } from "@/lib/constants";
-import { getRangeAnchorMonths, getRangeLabel } from "@/lib/date";
+import { getRangeLabel } from "@/lib/date";
 import type { AnalysisRangeMode } from "@/types/app";
 
 const primaryItems = [
@@ -68,13 +69,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { selectedMonth, setSelectedMonth, trackedMonths, analysisRangeMode, setAnalysisRangeMode } =
+  const { selectedMonth, setSelectedMonth, analysisRangeMode, setAnalysisRangeMode } =
     useAppState();
-  const rangeAnchorMonths = getRangeAnchorMonths(
-    trackedMonths,
-    analysisRangeMode,
-    selectedMonth,
-  );
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -116,21 +112,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <div>
               <p className="mb-2 text-sm font-medium text-slate-700">表示基準</p>
-              <select
+              <Input
+                type="month"
                 value={selectedMonth}
-                onChange={(event) => setSelectedMonth(event.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-              >
-                {rangeAnchorMonths.map((month) => (
-                  <option key={month} value={month}>
-                    {getRangeLabel(month, analysisRangeMode)}
-                  </option>
-                ))}
-              </select>
+                onChange={(event) => {
+                  if (event.target.value) {
+                    setSelectedMonth(event.target.value);
+                  }
+                }}
+              />
             </div>
 
             <p className="text-xs text-slate-500">
-              表示範囲: {getRangeLabel(selectedMonth, analysisRangeMode)}
+              表示範囲: {getRangeLabel(selectedMonth, analysisRangeMode)} / 過去の月も直接選択できます
             </p>
           </div>
         </div>

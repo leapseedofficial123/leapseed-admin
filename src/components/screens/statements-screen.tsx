@@ -145,7 +145,16 @@ function buildOtherRewardRows(statement: StatementData) {
     ]);
   }
 
-  if (statement.referralReward > 0) {
+  if (statement.referralRows.length) {
+    for (const detail of statement.referralRows) {
+      rows.push([
+        String(rows.length + 1),
+        `直紹介報酬（${detail.referredMemberName}）`,
+        `${formatCurrency(detail.referredFinalSalary)} × ${formatPercent(detail.rate)}`,
+        formatCurrency(detail.reward),
+      ]);
+    }
+  } else if (statement.referralReward > 0) {
     rows.push([
       String(rows.length + 1),
       "直紹介報酬",

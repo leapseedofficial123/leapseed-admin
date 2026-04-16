@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Badge, EmptyState, PageSection, Select, StatCard } from "@/components/ui";
+import { Badge, EmptyState, Input, PageSection, Select, StatCard } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
 import { ANALYSIS_RANGE_OPTIONS, DEAL_PATTERN_OPTIONS } from "@/lib/constants";
 import { downloadCsv } from "@/lib/csv";
-import { getRangeAnchorMonths, getRangeLabel } from "@/lib/date";
+import { getRangeLabel } from "@/lib/date";
 import { buildCompanyAnalysis, type AnalysisFilters } from "@/lib/domain/analysis";
 import {
   buildCompanySummaryCsvRows,
@@ -30,17 +30,11 @@ export function CompanyScreen() {
     store,
     selectedMonth,
     setSelectedMonth,
-    trackedMonths,
     analysisRangeMode,
     setAnalysisRangeMode,
     analysisMonths,
   } = useAppState();
   const [filters, setFilters] = useState<LocalFilters>(emptyFilters);
-  const rangeAnchorMonths = getRangeAnchorMonths(
-    trackedMonths,
-    analysisRangeMode,
-    selectedMonth,
-  );
   const rangeMonths = analysisMonths.length ? analysisMonths : [selectedMonth];
   const startMonth = rangeMonths[0];
   const endMonth = rangeMonths[rangeMonths.length - 1];
@@ -75,16 +69,11 @@ export function CompanyScreen() {
           </div>
           <div>
             <p className="mb-2 text-sm font-medium text-slate-700">表示基準</p>
-            <Select
+            <Input
+              type="month"
               value={selectedMonth}
               onChange={(event) => setSelectedMonth(event.target.value)}
-            >
-              {rangeAnchorMonths.map((month) => (
-                <option key={month} value={month}>
-                  {getRangeLabel(month, analysisRangeMode)}
-                </option>
-              ))}
-            </Select>
+            />
           </div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-600">
