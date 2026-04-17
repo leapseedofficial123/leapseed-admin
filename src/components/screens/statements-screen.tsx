@@ -103,7 +103,11 @@ function formatRateLabel(value: string) {
     .join(" / ");
 }
 
-function buildDisplayRows(statement: StatementData) {
+function buildDisplayRows(
+  statement: StatementData,
+  options?: { padToTemplate?: boolean },
+) {
+  const padToTemplate = options?.padToTemplate ?? true;
   const rows = statement.detailRows.slice(0, STATEMENT_ROW_COUNT).map((detail, index) => ({
     key: detail.participantId,
     index: index + 1,
@@ -116,7 +120,21 @@ function buildDisplayRows(statement: StatementData) {
     reward: formatCurrency(detail.reward),
   }));
 
-  while (rows.length < STATEMENT_ROW_COUNT) {
+  if (!padToTemplate && rows.length === 0) {
+    rows.push({
+      key: "blank_0",
+      index: 1,
+      memberName: "",
+      productName: "",
+      salePrice: "",
+      closedOn: "",
+      compensationTypeLabel: "",
+      appliedRate: "",
+      reward: "",
+    });
+  }
+
+  while (padToTemplate && rows.length < STATEMENT_ROW_COUNT) {
     rows.push({
       key: `blank_${rows.length}`,
       index: rows.length + 1,
@@ -166,10 +184,18 @@ function buildOtherRewardRows(statement: StatementData) {
   return rows;
 }
 
-function buildOtherRewardTableRows(statement: StatementData) {
+function buildOtherRewardTableRows(
+  statement: StatementData,
+  options?: { padToTemplate?: boolean },
+) {
+  const padToTemplate = options?.padToTemplate ?? true;
   const rows = buildOtherRewardRows(statement);
 
-  while (rows.length < 2) {
+  if (!padToTemplate && rows.length === 0) {
+    rows.push(["", "", "", ""]);
+  }
+
+  while (padToTemplate && rows.length < 2) {
     rows.push(["", "", "", ""]);
   }
 
@@ -462,8 +488,8 @@ function printTableHtml(title: string, headers: string[], rows: Array<Array<stri
 }
 
 function renderStatementSheetHtml(statement: StatementData, assetOrigin: string) {
-  const rows = buildDisplayRows(statement);
-  const otherRows = buildOtherRewardTableRows(statement);
+  const rows = buildDisplayRows(statement, { padToTemplate: false });
+  const otherRows = buildOtherRewardTableRows(statement, { padToTemplate: false });
 
   return `
     <div class="sheet sheet-main">
@@ -600,48 +626,49 @@ function openPrintWindow(title: string, statements: StatementData[]) {
         <title>${escapeHtml(title)}</title>
         <base href="${origin}/" />
         <style>
-          @page { size: A4; margin: 10mm; }
-          body { margin: 0; font-family: "Yu Gothic", "Yu Gothic UI", sans-serif; color: #0f172a; background: white; }
+          @page { size: A4; margin: 7mm; }
+          body { margin: 0; font-family: "Yu Gothic", "Yu Gothic UI", sans-serif; color: #0f172a; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .statement-bundle { width: 100%; }
           .statement-bundle + .statement-bundle { break-before: page; page-break-before: always; }
-          .sheet { width: 190mm; margin: 0 auto; border: 1px solid #d8eaf7; border-radius: 28px; padding: 7.5mm; box-sizing: border-box; background: white; }
-          .sheet-main { min-height: 277mm; break-inside: avoid; page-break-inside: avoid; }
-          .supplement-sheet { min-height: 277mm; break-before: page; page-break-before: always; }
-          .sheet-head { display: grid; grid-template-columns: 40mm 1fr 42mm; gap: 5mm; align-items: start; }
+          .sheet { width: 190mm; margin: 0 auto; border: 1px solid #d8eaf7; border-radius: 24px; padding: 6mm; box-sizing: border-box; background: white; }
+          .sheet-main { min-height: 0; break-inside: avoid; page-break-inside: avoid; }
+          .supplement-sheet { min-height: 0; break-before: page; page-break-before: always; }
+          .sheet-head { display: grid; grid-template-columns: 36mm 1fr 40mm; gap: 4mm; align-items: start; }
           .logo-wrap { display: flex; justify-content: center; align-items: flex-start; }
-          .logo-card { display: flex; min-height: 30mm; align-items: center; justify-content: center; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2.5mm 3mm; background: white; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06); }
-          .logo { width: 34mm; max-height: 22mm; object-fit: contain; display: block; background: white; }
-          .title-wrap { padding-top: 1.5mm; text-align: center; }
-          .title-wrap h2 { margin: 3mm 0 0; font-size: 21px; letter-spacing: .08em; }
-          .title-wrap p { margin: 3mm 0 0; font-size: 11px; color: #64748b; }
-          .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: .28em; font-size: 10px; color: #94a3b8; }
-          .member-box { margin-top: 5mm; border: 1px solid #d8eaf7; background: #f0f9ff; border-radius: 16px; padding: 4mm; break-inside: avoid; page-break-inside: avoid; }
-          .member-box span { display: block; font-size: 10px; color: #64748b; letter-spacing: .18em; }
-          .member-box strong { display: block; min-height: 8mm; margin-top: 2mm; font-size: 18px; color: #0f172a; }
-          .rate-stack { display: grid; gap: 3mm; }
-          .rate-box, .summary-box { border: 1px solid #d8eaf7; background: #f0f9ff; border-radius: 12px; padding: 3mm; }
-          .rate-box { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
-          .amount-box { background: #b6caee; border-radius: 16px; padding: 4mm 3mm; text-align: center; }
-          .amount-box span, .summary-box span, .final-box span { display: block; font-size: 10px; color: #475569; letter-spacing: .18em; }
-          .amount-box strong { display: block; margin-top: 2mm; font-size: 21px; color: #0f172a; }
-          .section { margin-top: 5.5mm; break-inside: avoid; page-break-inside: avoid; }
-          .section-head { display: flex; justify-content: space-between; gap: 4mm; margin-bottom: 2.5mm; font-size: 11px; }
-          table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
-          th, td { padding: 1.8mm 2.3mm; text-align: left; vertical-align: top; }
+          .logo-card { display: flex; min-height: 24mm; align-items: center; justify-content: center; border: 1px solid #e2e8f0; border-radius: 14px; padding: 2mm 2.5mm; background: white; box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05); }
+          .logo { width: 30mm; max-height: 18mm; object-fit: contain; display: block; background: white; }
+          .title-wrap { padding-top: 1mm; text-align: center; }
+          .title-wrap h2 { margin: 2mm 0 0; font-size: 19px; letter-spacing: .08em; }
+          .title-wrap p { margin: 2mm 0 0; font-size: 10px; color: #64748b; }
+          .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: .28em; font-size: 8.5px; color: #94a3b8; }
+          .member-box { margin-top: 4mm; border: 1px solid #d8eaf7; background: #f0f9ff; border-radius: 14px; padding: 3.2mm; break-inside: avoid; page-break-inside: avoid; }
+          .member-box span { display: block; font-size: 9px; color: #64748b; letter-spacing: .18em; }
+          .member-box strong { display: block; min-height: 6.5mm; margin-top: 1.2mm; font-size: 16px; color: #0f172a; }
+          .rate-stack { display: grid; gap: 2.2mm; }
+          .rate-box, .summary-box { border: 1px solid #d8eaf7; background: #f0f9ff; border-radius: 10px; padding: 2.5mm; }
+          .rate-box { display: flex; justify-content: space-between; align-items: center; font-size: 10px; }
+          .amount-box { background: #b6caee; border-radius: 14px; padding: 3.2mm 2.5mm; text-align: center; }
+          .amount-box span, .summary-box span, .final-box span { display: block; font-size: 9px; color: #475569; letter-spacing: .18em; }
+          .amount-box strong { display: block; margin-top: 1.4mm; font-size: 18px; color: #0f172a; }
+          .section { margin-top: 4mm; break-inside: avoid; page-break-inside: avoid; }
+          .section-head { display: flex; justify-content: space-between; gap: 4mm; margin-bottom: 1.8mm; font-size: 10px; }
+          table { width: 100%; border-collapse: collapse; font-size: 9px; }
+          th, td { padding: 1.2mm 1.6mm; text-align: left; vertical-align: top; }
           thead th { background: #d6eefc; color: #334155; font-weight: 600; }
           .blue-row td { background: #eef9ff; }
           .white-row td { background: #ffffff; }
           .sheet-table { border: 1px solid #d8eaf7; border-radius: 16px; overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
-          .bottom-grid { display: grid; grid-template-columns: 1fr 46mm; gap: 5mm; margin-top: 5.5mm; break-inside: avoid; page-break-inside: avoid; }
-          .summary-col { display: grid; gap: 2.5mm; }
-          .summary-box strong { display: block; margin-top: 2mm; font-size: 15px; color: #0f172a; }
+          .bottom-grid { display: grid; grid-template-columns: 1fr 42mm; gap: 4mm; margin-top: 4mm; break-inside: avoid; page-break-inside: avoid; }
+          .summary-col { display: grid; gap: 2mm; }
+          .summary-box strong { display: block; margin-top: 1.3mm; font-size: 13px; color: #0f172a; }
           .summary-box.right { text-align: right; }
-          .final-box { margin-top: 6mm; border-radius: 20px; background: #84c9ec; padding: 3.5mm; text-align: center; break-inside: avoid; page-break-inside: avoid; }
-          .final-box strong { display: block; margin-top: 2mm; font-size: 26px; color: #0f172a; }
+          .final-box { margin-top: 4mm; border-radius: 16px; background: #84c9ec; padding: 2.8mm; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+          .final-box strong { display: block; margin-top: 1.6mm; font-size: 22px; color: #0f172a; }
           .supplement-head { display: flex; justify-content: space-between; gap: 6mm; align-items: start; }
-          .supplement-head h2 { margin: 3mm 0 0; font-size: 22px; }
-          .supplement-head p { margin: 3mm 0 0; font-size: 11px; color: #64748b; }
-          .supplement-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 4mm; margin-top: 6mm; }
-          .section h3 { margin: 0 0 2.5mm; font-size: 13px; }
+          .supplement-head h2 { margin: 3mm 0 0; font-size: 20px; }
+          .supplement-head p { margin: 3mm 0 0; font-size: 10px; color: #64748b; }
+          .supplement-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 3mm; margin-top: 4mm; }
+          .section h3 { margin: 0 0 2mm; font-size: 12px; }
         </style>
       </head>
       <body>${statements
