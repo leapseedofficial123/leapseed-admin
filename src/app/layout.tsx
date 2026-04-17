@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Noto_Sans_JP } from "next/font/google";
 import { AuthGate } from "@/components/auth/auth-gate";
 import { AppShell } from "@/components/app-shell";
 import { AppStateProvider } from "@/context/app-state-context";
@@ -8,21 +7,9 @@ import { withBasePath } from "@/lib/base-path";
 import { APP_TITLE } from "@/lib/constants";
 import "./globals.css";
 
-const notoSansJp = Noto_Sans_JP({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
-
 export const metadata: Metadata = {
   title: APP_TITLE,
-  description: "LeapSeedの共有ログイン対応給与計算アプリです。",
+  description: "LeapSeed shared payroll application.",
   manifest: withBasePath("/manifest.webmanifest"),
   icons: {
     icon: [
@@ -54,10 +41,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ja"
-      className={`${notoSansJp.variable} ${ibmPlexMono.variable} h-full antialiased`}
-    >
+    <html lang="ja" className="h-full antialiased">
       <body className="min-h-full">
         <AuthProvider>
           <AppStateProvider>

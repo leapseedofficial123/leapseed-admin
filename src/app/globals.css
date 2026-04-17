@@ -3,8 +3,11 @@
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
-  --font-sans: "Noto Sans JP", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --font-sans:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic",
+    "Meiryo", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:
+    "SFMono-Regular", "IBM Plex Mono", "Consolas", "Liberation Mono", monospace;
 }
 
 @theme inline {
