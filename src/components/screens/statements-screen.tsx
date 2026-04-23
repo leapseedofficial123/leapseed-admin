@@ -3,13 +3,16 @@
 import { useMemo, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import {
+  Badge,
   EmptyState,
   Input,
+  InputWithSuffix,
   Label,
   OverlayPanel,
   PageSection,
   Select,
   StatCard,
+  Textarea,
 } from "@/components/ui";
 import { useAppState } from "@/context/app-state-context";
 import { withBasePath } from "@/lib/base-path";
@@ -24,7 +27,9 @@ import {
   formatPercent,
   formatSignedCurrency,
   parseNumberInput,
+  parsePercentInput,
   toInputString,
+  toPercentInputString,
 } from "@/lib/format";
 import { createId } from "@/lib/ids";
 
@@ -47,12 +52,29 @@ interface AdjustmentFormState {
   note: string;
 }
 
+interface MonthlyExecutiveFormState {
+  id?: string;
+  memberId: string;
+  enabled: boolean;
+  rate: string;
+  note: string;
+}
+
 function emptyExpenseForm(): ExpenseFormState {
   return { memberId: "", amount: "", category: "", note: "" };
 }
 
 function emptyAdjustmentForm(): AdjustmentFormState {
   return { memberId: "", title: "", amount: "", note: "" };
+}
+
+function emptyMonthlyExecutiveForm(): MonthlyExecutiveFormState {
+  return {
+    memberId: "",
+    enabled: true,
+    rate: "",
+    note: "",
+  };
 }
 
 function buildBlankStatementPreview(month: string): StatementData {
@@ -689,20 +711,32 @@ export function StatementsScreen() {
     store,
     selectedMonth,
     currentSnapshot,
+    saveMonthlyExecutiveAssignment,
+    deleteMonthlyExecutiveAssignment,
     saveMemberExpense,
     deleteMemberExpense,
     saveStatementAdjustment,
     deleteStatementAdjustment,
   } = useAppState();
   const statements = useMemo(() => buildMonthlyStatements(store, selectedMonth), [store, selectedMonth]);
+  const monthExecutiveAssignments = store.monthlyExecutiveAssignments.filter(
+    (assignment) => assignment.month === selectedMonth,
+  );
+  const enabledMonthExecutiveAssignments = monthExecutiveAssignments.filter(
+    (assignment) => assignment.enabled,
+  );
+  const usesMonthlyExecutiveAssignments = enabledMonthExecutiveAssignments.length > 0;
   const monthExpenses = store.memberExpenses.filter((expense) => expense.month === selectedMonth);
   const monthAdjustments = store.statementAdjustments.filter((adjustment) => adjustment.month === selectedMonth);
   const totalTransferAmount = statements.reduce((sum, statement) => sum + statement.transferAmount, 0);
   const [previewId, setPreviewId] = useState("");
   const [showTemplatePreview, setShowTemplatePreview] = useState(false);
-  const [panelMode, setPanelMode] = useState<"expense" | "adjustment" | null>(null);
+  const [panelMode, setPanelMode] = useState<"expense" | "adjustment" | "executive" | null>(null);
   const [expenseForm, setExpenseForm] = useState<ExpenseFormState>(emptyExpenseForm);
   const [adjustmentForm, setAdjustmentForm] = useState<AdjustmentFormState>(emptyAdjustmentForm);
+  const [executiveForm, setExecutiveForm] = useState<MonthlyExecutiveFormState>(
+    emptyMonthlyExecutiveForm,
+  );
   const [error, setError] = useState("");
   const preview = statements.find((statement) => statement.memberId === previewId) ?? null;
   const templatePreview = useMemo(() => buildBlankStatementPreview(selectedMonth), [selectedMonth]);
@@ -712,6 +746,7 @@ export function StatementsScreen() {
     setPanelMode(null);
     setExpenseForm(emptyExpenseForm());
     setAdjustmentForm(emptyAdjustmentForm());
+    setExecutiveForm(emptyMonthlyExecutiveForm());
     setError("");
   };
 
@@ -763,6 +798,30 @@ export function StatementsScreen() {
     setPanelMode("adjustment");
   };
 
+  const openExecutivePanel = (assignmentId?: string) => {
+    if (!assignmentId) {
+      setExecutiveForm(emptyMonthlyExecutiveForm());
+      setError("");
+      setPanelMode("executive");
+      return;
+    }
+
+    const assignment = monthExecutiveAssignments.find((item) => item.id === assignmentId);
+    if (!assignment) {
+      return;
+    }
+
+    setExecutiveForm({
+      id: assignment.id,
+      memberId: assignment.memberId,
+      enabled: assignment.enabled,
+      rate: toPercentInputString(assignment.rate),
+      note: assignment.note,
+    });
+    setError("");
+    setPanelMode("executive");
+  };
+
   const saveExpense = () => {
     if (!expenseForm.memberId) {
       setError("メンバーを選択してください。");
@@ -808,6 +867,29 @@ export function StatementsScreen() {
       title: adjustmentForm.title.trim(),
       amount: parseNumberInput(adjustmentForm.amount),
       note: adjustmentForm.note.trim(),
+    });
+    closePanel();
+  };
+
+  const saveExecutiveAssignment = () => {
+    if (!executiveForm.memberId) {
+      setError("役員報酬を付けるメンバーを選択してください。");
+      return;
+    }
+
+    const rate = parsePercentInput(executiveForm.rate);
+    if (executiveForm.enabled && rate <= 0) {
+      setError("役員報酬率を入力してください。");
+      return;
+    }
+
+    saveMonthlyExecutiveAssignment({
+      id: executiveForm.id || createId("monthly_executive"),
+      month: selectedMonth,
+      memberId: executiveForm.memberId,
+      enabled: executiveForm.enabled,
+      rate,
+      note: executiveForm.note.trim(),
     });
     closePanel();
   };
@@ -881,6 +963,93 @@ export function StatementsScreen() {
           </div>
         ) : (
           <EmptyState title="今月の給与明細対象がありません" description="成約一覧や明細調整を入れると、ここに対象メンバーが並びます。" />
+        )}
+      </PageSection>
+
+      <PageSection
+        title="今月の個別役員報酬"
+        description="この月だけ役員報酬を付けたい人をここで追加します。有効な設定が1件でもある月は、その月だけ固定役員設定よりこちらを優先して計算します。計算母数は売上ではなく会社取り分合計です。"
+        action={
+          <button
+            type="button"
+            onClick={() => openExecutivePanel()}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800"
+          >
+            個別役員報酬を追加
+          </button>
+        }
+      >
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Badge tone={usesMonthlyExecutiveAssignments ? "amber" : "slate"}>
+            {usesMonthlyExecutiveAssignments
+              ? "この月は個別役員報酬を優先反映"
+              : "この月は固定役員設定を使用"}
+          </Badge>
+          <span className="text-sm text-slate-500">
+            会社取り分合計 {formatCurrency(currentSnapshot.totalCompanyShare)} を母数に計算します。
+          </span>
+        </div>
+
+        {monthExecutiveAssignments.length ? (
+          <div className="space-y-3">
+            {monthExecutiveAssignments.map((assignment) => {
+              const member = store.members.find((item) => item.id === assignment.memberId);
+              const reflectedReward =
+                assignment.enabled && usesMonthlyExecutiveAssignments
+                  ? (currentSnapshot.memberSummaries.find(
+                      (summary) => summary.memberId === assignment.memberId,
+                    )?.executiveReward ?? 0)
+                  : 0;
+
+              return (
+                <div
+                  key={assignment.id}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-slate-900">
+                          {member?.name ?? "未設定メンバー"}
+                        </p>
+                        <Badge tone={assignment.enabled ? "amber" : "slate"}>
+                          {assignment.enabled ? "有効" : "無効"}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">
+                        個別率 {formatPercent(assignment.rate)} / 今月反映額{" "}
+                        {formatCurrency(reflectedReward)}
+                      </p>
+                      {assignment.note ? (
+                        <p className="mt-2 text-sm text-slate-600">{assignment.note}</p>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openExecutivePanel(assignment.id)}
+                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white"
+                      >
+                        編集
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteMonthlyExecutiveAssignment(assignment.id)}
+                        className="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState
+            title="今月の個別役員報酬はまだありません"
+            description="必要な月だけここで 1% や 2% を追加すると、その月だけ個別役員報酬として給与へ反映されます。"
+          />
         )}
       </PageSection>
 
@@ -1004,61 +1173,233 @@ export function StatementsScreen() {
 
       <OverlayPanel
         open={panelMode !== null}
-        title={panelMode === "expense" ? (expenseForm.id ? "個人経費を編集" : "個人経費を追加") : adjustmentForm.id ? "明細調整を編集" : "明細調整を追加"}
-        description={panelMode === "expense" ? "対象月の個人経費を入力します。" : "貸付や返済などの金額を入力します。"}
+        title={
+          panelMode === "expense"
+            ? expenseForm.id
+              ? "個人経費を編集"
+              : "個人経費を追加"
+            : panelMode === "adjustment"
+              ? adjustmentForm.id
+                ? "明細調整を編集"
+                : "明細調整を追加"
+              : executiveForm.id
+                ? "個別役員報酬を編集"
+                : "個別役員報酬を追加"
+        }
+        description={
+          panelMode === "expense"
+            ? "対象月の個人経費を入力します。"
+            : panelMode === "adjustment"
+              ? "貸付や返済など、給与に反映したい増減額を入力します。"
+              : "この月だけ会社取り分合計の 1% や 2% を特定メンバーへ割り当てます。"
+        }
         onClose={closePanel}
       >
         {panelMode === "expense" ? (
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label required>メンバー</Label>
-              <Select value={expenseForm.memberId} onChange={(event) => setExpenseForm((current) => ({ ...current, memberId: event.target.value }))}>
+              <Select
+                value={expenseForm.memberId}
+                onChange={(event) =>
+                  setExpenseForm((current) => ({ ...current, memberId: event.target.value }))
+                }
+              >
                 <option value="">選択してください</option>
-                {store.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+                {store.members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name}
+                  </option>
+                ))}
               </Select>
             </div>
             <div>
               <Label required>金額</Label>
-              <Input value={expenseForm.amount} onChange={(event) => setExpenseForm((current) => ({ ...current, amount: event.target.value }))} inputMode="numeric" placeholder="12000" />
+              <InputWithSuffix
+                value={expenseForm.amount}
+                onChange={(event) =>
+                  setExpenseForm((current) => ({ ...current, amount: event.target.value }))
+                }
+                inputMode="numeric"
+                placeholder="12000"
+                suffix="円"
+              />
             </div>
             <div>
               <Label>項目名</Label>
-              <Input value={expenseForm.category} onChange={(event) => setExpenseForm((current) => ({ ...current, category: event.target.value }))} placeholder="交通費" />
+              <Input
+                value={expenseForm.category}
+                onChange={(event) =>
+                  setExpenseForm((current) => ({ ...current, category: event.target.value }))
+                }
+                placeholder="交通費"
+              />
             </div>
             <div>
               <Label>メモ</Label>
-              <Input value={expenseForm.note} onChange={(event) => setExpenseForm((current) => ({ ...current, note: event.target.value }))} placeholder="内容メモ" />
+              <Input
+                value={expenseForm.note}
+                onChange={(event) =>
+                  setExpenseForm((current) => ({ ...current, note: event.target.value }))
+                }
+                placeholder="内容メモ"
+              />
             </div>
           </div>
-        ) : (
+        ) : panelMode === "adjustment" ? (
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label required>メンバー</Label>
-              <Select value={adjustmentForm.memberId} onChange={(event) => setAdjustmentForm((current) => ({ ...current, memberId: event.target.value }))}>
+              <Select
+                value={adjustmentForm.memberId}
+                onChange={(event) =>
+                  setAdjustmentForm((current) => ({ ...current, memberId: event.target.value }))
+                }
+              >
                 <option value="">選択してください</option>
-                {store.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+                {store.members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name}
+                  </option>
+                ))}
               </Select>
             </div>
             <div>
               <Label required>項目名</Label>
-              <Input value={adjustmentForm.title} onChange={(event) => setAdjustmentForm((current) => ({ ...current, title: event.target.value }))} placeholder="貸付返済" />
+              <Input
+                value={adjustmentForm.title}
+                onChange={(event) =>
+                  setAdjustmentForm((current) => ({ ...current, title: event.target.value }))
+                }
+                placeholder="貸付返済"
+              />
             </div>
             <div>
               <Label required>金額</Label>
-              <Input value={adjustmentForm.amount} onChange={(event) => setAdjustmentForm((current) => ({ ...current, amount: event.target.value }))} inputMode="numeric" placeholder="-20000" />
+              <InputWithSuffix
+                value={adjustmentForm.amount}
+                onChange={(event) =>
+                  setAdjustmentForm((current) => ({ ...current, amount: event.target.value }))
+                }
+                inputMode="numeric"
+                placeholder="-20000"
+                suffix="円"
+              />
             </div>
             <div>
               <Label>メモ</Label>
-              <Input value={adjustmentForm.note} onChange={(event) => setAdjustmentForm((current) => ({ ...current, note: event.target.value }))} placeholder="内容メモ" />
+              <Input
+                value={adjustmentForm.note}
+                onChange={(event) =>
+                  setAdjustmentForm((current) => ({ ...current, note: event.target.value }))
+                }
+                placeholder="内容メモ"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label required>メンバー</Label>
+                <Select
+                  value={executiveForm.memberId}
+                  onChange={(event) =>
+                    setExecutiveForm((current) => ({
+                      ...current,
+                      memberId: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">選択してください</option>
+                  {store.members.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label required>役員報酬率</Label>
+                <InputWithSuffix
+                  value={executiveForm.rate}
+                  onChange={(event) =>
+                    setExecutiveForm((current) => ({
+                      ...current,
+                      rate: event.target.value,
+                    }))
+                  }
+                  inputMode="decimal"
+                  placeholder="1"
+                  suffix="%"
+                />
+              </div>
+              <div>
+                <Label>この月の扱い</Label>
+                <Select
+                  value={executiveForm.enabled ? "enabled" : "disabled"}
+                  onChange={(event) =>
+                    setExecutiveForm((current) => ({
+                      ...current,
+                      enabled: event.target.value === "enabled",
+                    }))
+                  }
+                >
+                  <option value="enabled">有効にして給与へ反映</option>
+                  <option value="disabled">一旦保存のみ</option>
+                </Select>
+              </div>
+              <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3">
+                <p className="text-xs text-slate-500">計算母数</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  会社取り分合計 {formatCurrency(currentSnapshot.totalCompanyShare)}
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  1% = {formatCurrency(Math.round(currentSnapshot.totalCompanyShare * 0.01))}
+                  {" / "}2% = {formatCurrency(Math.round(currentSnapshot.totalCompanyShare * 0.02))}
+                </p>
+              </div>
+            </div>
+            <div>
+              <Label>メモ</Label>
+              <Textarea
+                value={executiveForm.note}
+                onChange={(event) =>
+                  setExecutiveForm((current) => ({ ...current, note: event.target.value }))
+                }
+                placeholder="この月だけ支給する理由や補足"
+              />
             </div>
           </div>
         )}
 
-        {error ? <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
+        {error ? (
+          <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
+          </div>
+        ) : null}
 
         <div className="mt-5 flex flex-wrap gap-3">
-          <button type="button" onClick={panelMode === "expense" ? saveExpense : saveAdjustment} className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm text-white transition hover:bg-slate-800">保存</button>
-          <button type="button" onClick={closePanel} className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm text-slate-700 transition hover:bg-slate-100">キャンセル</button>
+          <button
+            type="button"
+            onClick={
+              panelMode === "expense"
+                ? saveExpense
+                : panelMode === "adjustment"
+                  ? saveAdjustment
+                  : saveExecutiveAssignment
+            }
+            className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm text-white transition hover:bg-slate-800"
+          >
+            保存
+          </button>
+          <button
+            type="button"
+            onClick={closePanel}
+            className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm text-slate-700 transition hover:bg-slate-100"
+          >
+            キャンセル
+          </button>
         </div>
       </OverlayPanel>
     </>

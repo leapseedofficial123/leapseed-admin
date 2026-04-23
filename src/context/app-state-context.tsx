@@ -34,6 +34,7 @@ import type {
   DealParticipant,
   Member,
   MemberExpense,
+  MonthlyExecutiveAssignment,
   MonthlyPayrollSnapshot,
   MonthlySetting,
   Product,
@@ -78,6 +79,8 @@ interface AppStateContextValue {
   saveCompensationType: (type: CompensationType) => void;
   deleteCompensationType: (typeId: string) => void;
   saveMonthlySetting: (setting: MonthlySetting) => void;
+  saveMonthlyExecutiveAssignment: (assignment: MonthlyExecutiveAssignment) => void;
+  deleteMonthlyExecutiveAssignment: (assignmentId: string) => void;
   saveSalaryAdjustment: (adjustment: SalaryAdjustment) => void;
   deleteSalaryAdjustment: (adjustmentId: string) => void;
   saveMemberExpense: (expense: MemberExpense) => void;
@@ -108,15 +111,16 @@ function ensureMonthlySetting(store: AppDataStore): AppDataStore {
 
   return {
     ...store,
-    monthlySettings: [
-      ...store.monthlySettings,
-      {
-        month: store.preferences.displayMonth,
-        expense: 0,
-        note: "",
-      },
-    ],
-  };
+        monthlySettings: [
+          ...store.monthlySettings,
+          {
+            month: store.preferences.displayMonth,
+            expense: 0,
+            note: "",
+            executiveRewardMode: "fixed",
+          },
+        ],
+      };
 }
 
 function normalizePreferenceMonth(store: AppDataStore): AppDataStore {
@@ -142,6 +146,21 @@ function prepareStore(store: AppDataStore) {
   return ensureMonthlySetting(normalizePreferenceMonth(store));
 }
 
+function hasOperationalData(store: AppDataStore) {
+  return Boolean(
+    store.members.length ||
+      store.products.length ||
+      store.deals.length ||
+      store.dealParticipants.length ||
+      store.referralRelationships.length ||
+      store.monthlyExecutiveAssignments.length ||
+      store.salaryAdjustments.length ||
+      store.memberExpenses.length ||
+      store.statementAdjustments.length ||
+      store.monthlySettings.some((setting) => setting.expense !== 0 || setting.note.trim()),
+  );
+}
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [repository] = useState(createBrowserRepository);
   const initialStore = useMemo(() => prepareStore(repository.load()), [repository]);
@@ -150,6 +169,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState("");
   const remoteSnapshotRef = useRef(JSON.stringify(initialStore));
+  const localOperationalSeedRef = useRef(initialStore);
   const { user, isReady: isAuthReady, refreshSession } = useAuth();
 
   useEffect(() => {
@@ -173,12 +193,44 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setSyncError("");
 
     void fetchSharedStoreRequest()
-      .then((response) => {
+      .then(async (response) => {
         if (cancelled) {
           return;
         }
 
         const nextStore = prepareStore(normalizeStore(response.store));
+
+        if (
+          !hasOperationalData(nextStore) &&
+          hasOperationalData(localOperationalSeedRef.current)
+        ) {
+          const seedStore = prepareStore(localOperationalSeedRef.current);
+          const serializedSeedStore = JSON.stringify(seedStore);
+          remoteSnapshotRef.current = serializedSeedStore;
+          repository.save(seedStore);
+          setStore(seedStore);
+          setIsRemoteLoaded(true);
+
+          try {
+            setIsSyncing(true);
+            await saveSharedStoreRequest(seedStore);
+            setSyncError("");
+          } catch (error) {
+            if (error instanceof FunctionApiError && error.status === 401) {
+              await refreshSession();
+            }
+
+            setSyncError(
+              error instanceof Error
+                ? error.message
+                : "共有データの引き継ぎに失敗しました。",
+            );
+          } finally {
+            setIsSyncing(false);
+          }
+
+          return;
+        }
         remoteSnapshotRef.current = JSON.stringify(nextStore);
         repository.save(nextStore);
         setStore(nextStore);
@@ -307,6 +359,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         ),
         statementAdjustments: current.statementAdjustments.filter(
           (adjustment) => adjustment.memberId !== memberId,
+        ),
+        monthlyExecutiveAssignments: current.monthlyExecutiveAssignments.filter(
+          (assignment) => assignment.memberId !== memberId,
         ),
       }));
     },
@@ -439,6 +494,36 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             : [...current.monthlySettings, setting],
         };
       });
+    },
+    saveMonthlyExecutiveAssignment(assignment) {
+      setStore((current) => {
+        const existingForMember = current.monthlyExecutiveAssignments.find(
+          (item) => item.month === assignment.month && item.memberId === assignment.memberId,
+        );
+        const nextAssignment = existingForMember
+          ? { ...assignment, id: existingForMember.id }
+          : assignment;
+
+        return {
+          ...current,
+          monthlyExecutiveAssignments: upsertById(
+            current.monthlyExecutiveAssignments.filter(
+              (item) =>
+                item.id !== assignment.id &&
+                !(item.month === assignment.month && item.memberId === assignment.memberId),
+            ),
+            nextAssignment,
+          ),
+        };
+      });
+    },
+    deleteMonthlyExecutiveAssignment(assignmentId) {
+      setStore((current) => ({
+        ...current,
+        monthlyExecutiveAssignments: current.monthlyExecutiveAssignments.filter(
+          (assignment) => assignment.id !== assignmentId,
+        ),
+      }));
     },
     saveSalaryAdjustment(adjustment) {
       setStore((current) => ({

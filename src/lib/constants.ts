@@ -3,7 +3,7 @@ import type { CompensationBand, CompensationType } from "@/types/app";
 
 export const APP_TITLE = "LeapSeed給与計算";
 export const STORAGE_KEY = "leapseed-payroll-store";
-export const STORE_VERSION = 2;
+export const STORE_VERSION = 3;
 
 export const DEFAULT_DISPLAY_MONTH = getCurrentMonth();
 export const DEFAULT_TODAY = getToday();

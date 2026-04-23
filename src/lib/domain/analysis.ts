@@ -347,6 +347,7 @@ export function buildMemberHistory(store: AppDataStore, memberId: string): Membe
       new Set([
         ...store.deals.map((deal) => deal.targetMonth),
         ...store.monthlySettings.map((setting) => setting.month),
+        ...store.monthlyExecutiveAssignments.map((assignment) => assignment.month),
         ...store.salaryAdjustments.map((adjustment) => adjustment.month),
         ...store.memberExpenses.map((expense) => expense.month),
         ...store.statementAdjustments.map((adjustment) => adjustment.month),

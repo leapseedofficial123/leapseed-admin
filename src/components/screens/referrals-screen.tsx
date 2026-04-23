@@ -32,7 +32,7 @@ function createEmptyReferralForm(): ReferralFormState {
   return {
     introducerMemberId: "",
     referredMemberId: "",
-    referralRate: "10",
+    referralRate: "",
     startMonth: "",
     endMonth: "",
   };
@@ -93,11 +93,16 @@ export function ReferralsScreen() {
       return;
     }
 
+    const introducer = store.members.find(
+      (member) => member.id === form.introducerMemberId,
+    );
+
     saveReferralRelationship({
       id: form.id || createId("referral"),
       introducerMemberId: form.introducerMemberId,
       referredMemberId: form.referredMemberId,
-      referralRate: parsePercentInput(form.referralRate) || 0.1,
+      referralRate:
+        parsePercentInput(form.referralRate) || introducer?.defaultReferralRate || 0.1,
       startMonth: form.startMonth,
       endMonth: form.endMonth || undefined,
     });
@@ -195,9 +200,9 @@ export function ReferralsScreen() {
                 setForm((current) => ({
                   ...current,
                   introducerMemberId: event.target.value,
-                      referralRate:
-                        current.id || current.referralRate
-                          ? current.referralRate
+                  referralRate:
+                    current.id || current.referralRate.trim()
+                      ? current.referralRate
                       : toPercentInputString(selected?.defaultReferralRate ?? 0.1),
                 }));
               }}

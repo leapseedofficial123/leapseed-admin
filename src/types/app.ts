@@ -69,6 +69,8 @@ export interface ReferralRelationship {
   endMonth?: string;
 }
 
+export type ExecutiveRewardMode = "fixed" | "monthly";
+
 export interface CompensationBand {
   id: string;
   minSales: number;
@@ -78,6 +80,16 @@ export interface CompensationBand {
 export interface MonthlySetting {
   month: string;
   expense: number;
+  note: string;
+  executiveRewardMode: ExecutiveRewardMode;
+}
+
+export interface MonthlyExecutiveAssignment {
+  id: string;
+  month: string;
+  memberId: string;
+  enabled: boolean;
+  rate: number;
   note: string;
 }
 
@@ -124,6 +136,7 @@ export interface AppDataStore {
   referralRelationships: ReferralRelationship[];
   compensationBands: CompensationBand[];
   monthlySettings: MonthlySetting[];
+  monthlyExecutiveAssignments: MonthlyExecutiveAssignment[];
   salaryAdjustments: SalaryAdjustment[];
   memberExpenses: MemberExpense[];
   statementAdjustments: StatementAdjustment[];
@@ -166,6 +179,7 @@ export interface MonthlyMemberSummary {
   projectReward: number;
   referralReward: number;
   executiveReward: number;
+  executiveRewardMode: ExecutiveRewardMode;
   adjustment: number;
   personalExpense: number;
   finalSalary: number;

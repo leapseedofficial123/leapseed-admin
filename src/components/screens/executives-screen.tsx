@@ -54,18 +54,13 @@ function createExecutiveMemberForm(): ExecutiveMemberFormState {
 }
 
 export function ExecutivesScreen() {
-  const {
-    store,
-    selectedMonth,
-    currentSnapshot,
-    saveMember,
-    saveMonthlySetting,
-  } = useAppState();
+  const { store, selectedMonth, currentSnapshot, saveMember, saveMonthlySetting } = useAppState();
   const currentSetting =
     store.monthlySettings.find((setting) => setting.month === selectedMonth) ?? {
       month: selectedMonth,
       expense: 0,
       note: "",
+      executiveRewardMode: "fixed" as const,
     };
 
   const [panelMode, setPanelMode] = useState<"setting" | "member" | null>(null);
@@ -108,6 +103,7 @@ export function ExecutivesScreen() {
       month: selectedMonth,
       expense: parseNumberInput(settingForm.expense),
       note: settingForm.note.trim(),
+      executiveRewardMode: currentSetting.executiveRewardMode ?? "fixed",
     });
     closePanel();
   };
@@ -129,15 +125,15 @@ export function ExecutivesScreen() {
   return (
     <>
       <PageSection
-        title="当月の会社設定"
-        description="表示中の対象月にひもづく全体経費とメモを管理します。"
+        title="役員の固定設定"
+        description="ここでは固定で支給する役員フラグと固定率だけを管理します。月ごとの個別役員報酬は給与明細画面から追加してください。"
         action={
           <button
             type="button"
             onClick={openSettingPanel}
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800"
           >
-            編集
+            今月の経費
           </button>
         }
       >
@@ -150,35 +146,45 @@ export function ExecutivesScreen() {
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">全体経費</p>
-              <p className="mt-1 font-semibold text-slate-900">
-                {formatCurrency(currentSetting.expense)}
-              </p>
-            </div>
-            <div>
               <p className="text-xs text-slate-500">会社取り分合計</p>
               <p className="mt-1 font-semibold text-slate-900">
                 {formatCurrency(currentSnapshot.totalCompanyShare)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">役員報酬合計</p>
+              <p className="text-xs text-slate-500">固定役員報酬合計</p>
               <p className="mt-1 font-semibold text-slate-900">
-                {formatCurrency(currentSnapshot.totalExecutiveReward)}
+                {formatCurrency(
+                  currentSnapshot.memberSummaries.reduce(
+                    (sum, summary) =>
+                      summary.executiveRewardMode === "fixed"
+                        ? sum + summary.executiveReward
+                        : sum,
+                    0,
+                  ),
+                )}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">全体経費</p>
+              <p className="mt-1 font-semibold text-slate-900">
+                {formatCurrency(currentSetting.expense)}
               </p>
             </div>
           </div>
           {currentSetting.note ? (
             <p className="mt-4 text-sm leading-6 text-slate-600">{currentSetting.note}</p>
           ) : (
-            <p className="mt-4 text-sm text-slate-500">メモはまだ登録されていません。</p>
+            <p className="mt-4 text-sm text-slate-500">
+              月別の個別役員報酬は給与明細画面から追加すると、その月だけ固定設定より優先して反映されます。
+            </p>
           )}
         </div>
       </PageSection>
 
       <PageSection
-        title="役員設定一覧"
-        description="一覧から編集を押すと、同じ設定フォームを右側パネルで開いて更新できます。"
+        title="固定役員メンバー"
+        description="常時支給する役員だけをここで設定します。計算母数は売上ではなく会社取り分合計です。"
       >
         {store.members.length ? (
           <div className="space-y-3">
@@ -199,15 +205,19 @@ export function ExecutivesScreen() {
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-lg font-semibold text-slate-900">{member.name}</p>
                           {member.isExecutive ? (
-                            <Badge tone="amber">役員</Badge>
+                            <Badge tone="amber">固定役員</Badge>
                           ) : (
-                            <Badge>一般メンバー</Badge>
+                            <Badge>通常メンバー</Badge>
                           )}
-                          {!member.isActive ? <Badge tone="rose">休止</Badge> : null}
+                          {!member.isActive ? <Badge tone="rose">非在籍</Badge> : null}
                         </div>
                         <p className="text-sm text-slate-500">
-                          役員報酬率 {formatPercent(member.executiveCompensationRate)} / 今月の役員報酬{" "}
-                          {formatCurrency(summary?.executiveReward ?? 0)}
+                          固定率 {formatPercent(member.executiveCompensationRate)} / 今月反映額{" "}
+                          {formatCurrency(
+                            summary?.executiveRewardMode === "fixed"
+                              ? summary.executiveReward
+                              : 0,
+                          )}
                         </p>
                         {member.note ? (
                           <p className="text-sm leading-6 text-slate-600">{member.note}</p>
@@ -228,18 +238,18 @@ export function ExecutivesScreen() {
         ) : (
           <EmptyState
             title="メンバーがまだ登録されていません"
-            description="先にメンバー管理で登録すると、ここで役員フラグと役員報酬率を設定できます。"
+            description="先にメンバー管理で登録すると、ここで固定役員率を設定できます。"
           />
         )}
       </PageSection>
 
       <OverlayPanel
         open={panelMode !== null}
-        title={panelMode === "setting" ? "会社設定を編集" : "役員設定を編集"}
+        title={panelMode === "setting" ? "今月の経費を編集" : "固定役員設定を編集"}
         description={
           panelMode === "setting"
-            ? "表示中の月に対する全体経費とメモを更新します。"
-            : "一覧から選んだメンバーの役員設定を更新します。"
+            ? "対象月の全体経費とメモを更新します。"
+            : "固定役員フラグと固定率を更新します。"
         }
         onClose={closePanel}
       >
@@ -267,7 +277,7 @@ export function ExecutivesScreen() {
                 />
               </div>
               <div className="md:col-span-2">
-                <Label>全体メモ</Label>
+                <Label>メモ</Label>
                 <Textarea
                   value={settingForm.note}
                   onChange={(event) =>
@@ -276,7 +286,7 @@ export function ExecutivesScreen() {
                       note: event.target.value,
                     }))
                   }
-                  placeholder="今月の全体メモ"
+                  placeholder="この月の補足"
                 />
               </div>
             </div>
@@ -307,7 +317,7 @@ export function ExecutivesScreen() {
                 </div>
               </div>
               <div>
-                <Label>役員フラグ</Label>
+                <Label>固定役員フラグ</Label>
                 <Select
                   value={memberForm.isExecutive ? "yes" : "no"}
                   onChange={(event) =>
@@ -317,12 +327,12 @@ export function ExecutivesScreen() {
                     }))
                   }
                 >
-                  <option value="no">一般メンバー</option>
-                  <option value="yes">役員</option>
+                  <option value="no">通常メンバー</option>
+                  <option value="yes">固定役員</option>
                 </Select>
               </div>
               <div>
-                <Label>役員報酬率</Label>
+                <Label>固定率</Label>
                 <InputWithSuffix
                   value={memberForm.executiveCompensationRate}
                   onChange={(event) =>
@@ -337,9 +347,9 @@ export function ExecutivesScreen() {
                 />
               </div>
               <div className="md:col-span-2">
-                <Label>補足</Label>
+                <Label>備考</Label>
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-700">
-                  {memberForm.note || "メモはありません。"}
+                  {memberForm.note || "備考はありません。"}
                 </div>
               </div>
             </div>

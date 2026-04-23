@@ -95,12 +95,32 @@ export function createSampleAppDataStore(): AppDataStore {
       {
         month: "2026-03",
         expense: 450_000,
+        executiveRewardMode: "monthly",
         note: "広告費と固定費",
       },
       {
         month: "2026-02",
         expense: 320_000,
+        executiveRewardMode: "fixed",
         note: "",
+      },
+    ],
+    monthlyExecutiveAssignments: [
+      {
+        id: "exec_assignment_1",
+        month: "2026-03",
+        memberId: "member_ayane",
+        enabled: true,
+        rate: 0.02,
+        note: "3月は固定より高めに支給",
+      },
+      {
+        id: "exec_assignment_2",
+        month: "2026-03",
+        memberId: "member_taketo",
+        enabled: true,
+        rate: 0.01,
+        note: "3月の売上上位者へ追加支給",
       },
     ],
     salaryAdjustments: [

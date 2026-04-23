@@ -8,6 +8,7 @@ import type {
   CompensationType,
   Deal,
   DealParticipant,
+  MonthlyExecutiveAssignment,
   Member,
   MemberExpense,
   MonthlySetting,
@@ -35,9 +36,20 @@ function migrateStore(store: AppDataStore, version: number): AppDataStore {
   if (version < 2) {
     nextStore = {
       ...nextStore,
-      products: [],
-      deals: [],
-      dealParticipants: [],
+      products: nextStore.products ?? [],
+      deals: nextStore.deals ?? [],
+      dealParticipants: nextStore.dealParticipants ?? [],
+    };
+  }
+
+  if (version < 3) {
+    nextStore = {
+      ...nextStore,
+      monthlySettings: nextStore.monthlySettings.map((setting) => ({
+        ...setting,
+        executiveRewardMode: "fixed",
+      })),
+      monthlyExecutiveAssignments: [],
     };
   }
 
@@ -73,8 +85,17 @@ export function normalizeStore(raw: unknown): AppDataStore {
       ? asArray<CompensationBand>(candidate.compensationBands)
       : fallback.compensationBands,
     monthlySettings: asArray<MonthlySetting>(candidate.monthlySettings).length
-      ? asArray<MonthlySetting>(candidate.monthlySettings)
+      ? asArray<MonthlySetting>(candidate.monthlySettings).map((setting) => ({
+          ...setting,
+          executiveRewardMode: setting.executiveRewardMode ?? "fixed",
+        }))
       : fallback.monthlySettings,
+    monthlyExecutiveAssignments: asArray<MonthlyExecutiveAssignment>(
+      candidate.monthlyExecutiveAssignments,
+    ).map((assignment) => ({
+      ...assignment,
+      enabled: assignment.enabled ?? true,
+    })),
     salaryAdjustments: asArray<SalaryAdjustment>(candidate.salaryAdjustments),
     memberExpenses: asArray<MemberExpense>(candidate.memberExpenses),
     statementAdjustments: asArray<StatementAdjustment>(candidate.statementAdjustments),
