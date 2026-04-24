@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { BrandLogo } from "@/components/brand-logo";
 import {
   Badge,
@@ -238,7 +239,16 @@ function hasStatementSupplement(statement: StatementData) {
 }
 
 function sanitizePdfFileName(value: string) {
-  return value.replace(/[\\/:*?"<>|]+/g, "-").trim() || "statement";
+  return (
+    value
+      .normalize("NFKC")
+      .replace(/[\\/:*?"<>|]+/g, "-")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^\.+/, "")
+      .replace(/[.-]+$/, "")
+      .trim() || "statement"
+  );
 }
 
 function waitForAnimationFrame() {
@@ -277,7 +287,75 @@ async function waitForPdfAssets(container: HTMLElement) {
   });
 }
 
-async function downloadStatementsPdfFile(container: HTMLElement, fileName: string) {
+function writePdfPreparingWindow(pdfWindow: Window | null) {
+  if (!pdfWindow) {
+    return;
+  }
+
+  pdfWindow.document.write(`
+    <html lang="ja">
+      <head>
+        <meta charset="utf-8" />
+        <title>PDFを作成中</title>
+        <style>
+          body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            font-family: "Yu Gothic", "Yu Gothic UI", sans-serif;
+            color: #0f172a;
+            background: #f8fafc;
+          }
+          div {
+            padding: 24px;
+            text-align: center;
+          }
+          p {
+            margin: 8px 0 0;
+            color: #64748b;
+            font-size: 14px;
+          }
+        </style>
+      </head>
+      <body>
+        <div>
+          <strong>PDFを作成中です</strong>
+          <p>完了すると、この画面に給与明細PDFが表示されます。</p>
+        </div>
+      </body>
+    </html>
+  `);
+  pdfWindow.document.close();
+}
+
+function openGeneratedPdf(blob: Blob, fileName: string, pdfWindow: Window | null) {
+  const blobUrl = window.URL.createObjectURL(blob);
+  const safeFileName = `${sanitizePdfFileName(fileName)}.pdf`;
+
+  if (pdfWindow && !pdfWindow.closed) {
+    pdfWindow.location.href = blobUrl;
+  }
+
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = safeFileName;
+  link.type = "application/pdf";
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  window.setTimeout(() => {
+    window.URL.revokeObjectURL(blobUrl);
+  }, 60_000);
+}
+
+async function downloadStatementsPdfFile(
+  container: HTMLElement,
+  fileName: string,
+  pdfWindow: Window | null,
+) {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
     import("html2canvas"),
     import("jspdf"),
@@ -324,7 +402,7 @@ async function downloadStatementsPdfFile(container: HTMLElement, fileName: strin
     pdf.addImage(imageData, "PNG", x, y, width, height, undefined, "FAST");
   }
 
-  pdf.save(`${sanitizePdfFileName(fileName)}.pdf`);
+  openGeneratedPdf(pdf.output("blob"), fileName, pdfWindow);
 }
 
 function SummaryBar({ label, value }: { label: string; value: string }) {
@@ -863,49 +941,6 @@ export function StatementsScreen() {
   const templatePreview = useMemo(() => buildBlankStatementPreview(selectedMonth), [selectedMonth]);
   const activePreview = preview ?? (showTemplatePreview ? templatePreview : null);
 
-  useEffect(() => {
-    if (!pdfJob || !pdfRenderRef.current) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const generatePdf = async () => {
-      setIsPdfGenerating(true);
-
-      try {
-        await waitForPdfAssets(pdfRenderRef.current!);
-        if (cancelled) {
-          return;
-        }
-
-        await downloadStatementsPdfFile(pdfRenderRef.current!, pdfJob.fileName);
-        if (!cancelled) {
-          setPdfError("");
-        }
-      } catch (pdfGenerationError) {
-        if (!cancelled) {
-          setPdfError(
-            pdfGenerationError instanceof Error
-              ? pdfGenerationError.message
-              : "PDFの作成に失敗しました。",
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setIsPdfGenerating(false);
-          setPdfJob(null);
-        }
-      }
-    };
-
-    void generatePdf();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [pdfJob]);
-
   const closePanel = () => {
     setPanelMode(null);
     setExpenseForm(emptyExpenseForm());
@@ -914,16 +949,45 @@ export function StatementsScreen() {
     setError("");
   };
 
-  const queuePdfDownload = (fileName: string, targetStatements: StatementData[]) => {
+  const queuePdfDownload = async (fileName: string, targetStatements: StatementData[]) => {
     if (!targetStatements.length || isPdfGenerating) {
       return;
     }
 
+    const pdfWindow = window.open("", "_blank");
+    writePdfPreparingWindow(pdfWindow);
     setPdfError("");
-    setPdfJob({
-      fileName,
-      statements: targetStatements,
-    });
+    setIsPdfGenerating(true);
+
+    try {
+      flushSync(() => {
+        setPdfJob({
+          fileName,
+          statements: targetStatements,
+        });
+      });
+
+      if (!pdfRenderRef.current) {
+        throw new Error("PDF化する給与明細の準備に失敗しました。");
+      }
+
+      await waitForPdfAssets(pdfRenderRef.current);
+      await downloadStatementsPdfFile(pdfRenderRef.current, fileName, pdfWindow);
+      setPdfError("");
+    } catch (pdfGenerationError) {
+      if (pdfWindow && !pdfWindow.closed) {
+        pdfWindow.close();
+      }
+
+      setPdfError(
+        pdfGenerationError instanceof Error
+          ? pdfGenerationError.message
+          : "PDFの作成に失敗しました。",
+      );
+    } finally {
+      setIsPdfGenerating(false);
+      setPdfJob(null);
+    }
   };
 
   const openExpensePanel = (expenseId?: string) => {
@@ -1096,11 +1160,11 @@ export function StatementsScreen() {
             </button>
             <button
               type="button"
-              onClick={() => queuePdfDownload(`${selectedMonth}-給与明細一括`, statements)}
+              onClick={() => void queuePdfDownload(`${selectedMonth}-給与明細一括`, statements)}
               disabled={!statements.length || isPdfGenerating}
               className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
             >
-              {isPdfGenerating ? "PDFを作成中..." : "今月分を一括でPDFダウンロード"}
+              {isPdfGenerating ? "PDFを作成中..." : "今月分を一括でPDF発行"}
             </button>
           </div>
         }
@@ -1138,6 +1202,7 @@ export function StatementsScreen() {
                     <button
                       type="button"
                       onClick={() =>
+                        void
                         queuePdfDownload(
                           `${statement.memberName}-${statement.month}-給与明細`,
                           [statement],
@@ -1146,7 +1211,7 @@ export function StatementsScreen() {
                       disabled={isPdfGenerating}
                       className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                     >
-                      PDFダウンロード
+                      PDF発行
                     </button>
                     <button type="button" onClick={() => downloadCsv(`leapseed-statement-${selectedMonth}-${statement.memberName}.csv`, buildMemberStatementCsvRows(store, selectedMonth, statement.memberId))} className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white sm:w-auto">明細CSV</button>
                   </div>
@@ -1332,6 +1397,7 @@ export function StatementsScreen() {
               <button
                 type="button"
                 onClick={() =>
+                  void
                   queuePdfDownload(
                     activePreview.memberId === "__template__"
                       ? `${selectedMonth}-給与明細テンプレート`
@@ -1342,7 +1408,7 @@ export function StatementsScreen() {
                 disabled={isPdfGenerating}
                 className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
-                {isPdfGenerating ? "PDFを作成中..." : "PDFダウンロード"}
+                {isPdfGenerating ? "PDFを作成中..." : "PDF発行"}
               </button>
               <button
                 type="button"
