@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { useMemo, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import {
   Badge,
@@ -59,11 +58,6 @@ interface MonthlyExecutiveFormState {
   enabled: boolean;
   rate: string;
   note: string;
-}
-
-interface PdfJobState {
-  fileName: string;
-  statements: StatementData[];
 }
 
 function emptyExpenseForm(): ExpenseFormState {
@@ -238,241 +232,6 @@ function hasStatementSupplement(statement: StatementData) {
   );
 }
 
-function sanitizePdfFileName(value: string) {
-  return (
-    value
-      .normalize("NFKC")
-      .replace(/[\\/:*?"<>|]+/g, "-")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^\.+/, "")
-      .replace(/[.-]+$/, "")
-      .trim() || "statement"
-  );
-}
-
-function waitForAnimationFrame() {
-  return new Promise<void>((resolve) => {
-    window.requestAnimationFrame(() => resolve());
-  });
-}
-
-function withTimeout<T>(promise: Promise<T>, milliseconds: number, fallback: T): Promise<T> {
-  return new Promise((resolve) => {
-    const timeoutId = window.setTimeout(() => resolve(fallback), milliseconds);
-    promise
-      .then((value) => resolve(value))
-      .catch(() => resolve(fallback))
-      .finally(() => window.clearTimeout(timeoutId));
-  });
-}
-
-async function waitForPdfAssets(container: HTMLElement) {
-  await waitForAnimationFrame();
-  await waitForAnimationFrame();
-
-  if ("fonts" in document) {
-    await withTimeout((document as Document & { fonts: FontFaceSet }).fonts.ready, 1200, undefined);
-  }
-
-  const images = Array.from(container.querySelectorAll("img"));
-  await Promise.all(
-    images.map(
-      (image) =>
-        withTimeout(
-          new Promise<void>((resolve) => {
-            if (image.complete) {
-              resolve();
-              return;
-            }
-
-            const finalize = () => resolve();
-            image.addEventListener("load", finalize, { once: true });
-            image.addEventListener("error", finalize, { once: true });
-          }),
-          1500,
-          undefined,
-        ),
-    ),
-  );
-
-  await new Promise<void>((resolve) => {
-    window.setTimeout(resolve, 40);
-  });
-}
-
-function writePdfPreparingWindow(pdfWindow: Window | null) {
-  if (!pdfWindow) {
-    return;
-  }
-
-  pdfWindow.document.write(`
-    <html lang="ja">
-      <head>
-        <meta charset="utf-8" />
-        <title>PDFを作成中</title>
-        <style>
-          body {
-            margin: 0;
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            font-family: "Yu Gothic", "Yu Gothic UI", sans-serif;
-            color: #0f172a;
-            background: #f8fafc;
-          }
-          div {
-            padding: 24px;
-            text-align: center;
-          }
-          p {
-            margin: 8px 0 0;
-            color: #64748b;
-            font-size: 14px;
-          }
-        </style>
-      </head>
-      <body>
-        <div>
-          <strong>PDFを作成中です</strong>
-          <p>完了すると、この画面に給与明細PDFが表示されます。</p>
-        </div>
-      </body>
-    </html>
-  `);
-  pdfWindow.document.close();
-}
-
-function writePdfErrorWindow(pdfWindow: Window | null, message: string) {
-  if (!pdfWindow || pdfWindow.closed) {
-    return;
-  }
-
-  pdfWindow.document.open();
-  pdfWindow.document.write(`
-    <html lang="ja">
-      <head>
-        <meta charset="utf-8" />
-        <title>PDF作成エラー</title>
-        <style>
-          body {
-            margin: 0;
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            font-family: "Yu Gothic", "Yu Gothic UI", sans-serif;
-            color: #0f172a;
-            background: #fff7ed;
-          }
-          div {
-            max-width: 520px;
-            padding: 24px;
-            text-align: center;
-          }
-          p {
-            margin: 12px 0 0;
-            color: #9a3412;
-            font-size: 14px;
-            line-height: 1.8;
-          }
-        </style>
-      </head>
-      <body>
-        <div>
-          <strong>PDFの作成に失敗しました</strong>
-          <p>${escapeHtml(message)}</p>
-        </div>
-      </body>
-    </html>
-  `);
-  pdfWindow.document.close();
-}
-
-function openGeneratedPdf(blob: Blob, fileName: string, pdfWindow: Window | null) {
-  const blobUrl = window.URL.createObjectURL(blob);
-  const safeFileName = `${sanitizePdfFileName(fileName)}.pdf`;
-
-  if (pdfWindow && !pdfWindow.closed) {
-    pdfWindow.location.href = blobUrl;
-  }
-
-  const link = document.createElement("a");
-  link.href = blobUrl;
-  link.download = safeFileName;
-  link.type = "application/pdf";
-  link.rel = "noopener";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  window.setTimeout(() => {
-    window.URL.revokeObjectURL(blobUrl);
-  }, 60_000);
-}
-
-async function downloadStatementsPdfFile(
-  container: HTMLElement,
-  fileName: string,
-  pdfWindow: Window | null,
-) {
-  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-    import("html2canvas"),
-    import("jspdf"),
-  ]);
-
-  const pageElements = Array.from(
-    container.querySelectorAll<HTMLElement>('[data-pdf-page="true"]'),
-  );
-
-  if (!pageElements.length) {
-    throw new Error("PDF化する給与明細ページが見つかりませんでした。");
-  }
-
-  const pdf = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: "a4",
-    compress: true,
-  });
-  const pdfWidth = pdf.internal.pageSize.getWidth();
-  const pdfHeight = pdf.internal.pageSize.getHeight();
-
-  for (const [index, pageElement] of pageElements.entries()) {
-    if (index > 0) {
-      pdf.addPage();
-    }
-
-    const canvas = await withTimeout(
-      html2canvas(pageElement, {
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        scale: Math.max(1.4, Math.min(window.devicePixelRatio || 1, 2)),
-        windowWidth: pageElement.scrollWidth,
-        windowHeight: pageElement.scrollHeight,
-      }),
-      12_000,
-      null,
-    );
-
-    if (!canvas) {
-      throw new Error("PDF画像の作成に時間がかかったため中断しました。もう一度お試しください。");
-    }
-
-    const imageData = canvas.toDataURL("image/jpeg", 0.92);
-    const scale = Math.min(pdfWidth / canvas.width, pdfHeight / canvas.height);
-    const width = canvas.width * scale;
-    const height = canvas.height * scale;
-    const x = (pdfWidth - width) / 2;
-    const y = (pdfHeight - height) / 2;
-
-    pdf.addImage(imageData, "JPEG", x, y, width, height, undefined, "FAST");
-  }
-
-  openGeneratedPdf(pdf.output("blob"), fileName, pdfWindow);
-}
-
 function SummaryBar({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3">
@@ -522,7 +281,7 @@ function SupplementTable({
   );
 }
 
-function StatementSheet({ statement, forPdf = false }: { statement: StatementData; forPdf?: boolean }) {
+function StatementSheet({ statement }: { statement: StatementData }) {
   const rows = buildDisplayRows(statement);
   const otherRows = buildOtherRewardTableRows(statement);
 
@@ -535,17 +294,7 @@ function StatementSheet({ statement, forPdf = false }: { statement: StatementDat
         <div className="grid gap-4 lg:grid-cols-[160px_1fr_214px] lg:items-start">
           <div className="flex justify-center pt-1 lg:justify-start">
             <div className="rounded-2xl bg-white px-4 py-3">
-              {forPdf ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={withBasePath("/branding/leapseed-logo.png")}
-                  alt="LeapSeed"
-                  className="mx-auto block object-contain lg:mx-0"
-                  style={{ width: 138, height: "auto" }}
-                />
-              ) : (
-                <BrandLogo width={138} priority className="mx-auto lg:mx-0" />
-              )}
+              <BrandLogo width={138} priority className="mx-auto lg:mx-0" />
             </div>
           </div>
           <div className="pt-1 text-center lg:pt-3">
@@ -748,28 +497,6 @@ function StatementSupplement({ statement }: { statement: StatementData }) {
   );
 }
 
-function PdfExportPages({ statements }: { statements: StatementData[] }) {
-  return (
-    <div className="w-[920px] bg-white px-6 py-6">
-      {statements.map((statement, index) => (
-        <div
-          key={`${statement.memberId}_${statement.month}_${index}`}
-          className={index > 0 ? "mt-6" : ""}
-        >
-          <div data-pdf-page="true" className="bg-white py-2">
-            <StatementSheet statement={statement} forPdf />
-          </div>
-          {hasStatementSupplement(statement) ? (
-            <div data-pdf-page="true" className="bg-white py-2">
-              <StatementSupplement statement={statement} />
-            </div>
-          ) : null}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function printTableHtml(title: string, headers: string[], rows: Array<Array<string>>) {
   return `
     <section class="section">
@@ -909,7 +636,7 @@ function renderSupplementHtml(statement: StatementData) {
 function openPrintWindow(title: string, statements: StatementData[]) {
   const nextWindow = window.open("", "_blank", "width=1400,height=900");
   if (!nextWindow) {
-    return;
+    return false;
   }
   const origin = window.location.origin;
   const assetOrigin = window.location.origin;
@@ -923,6 +650,8 @@ function openPrintWindow(title: string, statements: StatementData[]) {
         <style>
           @page { size: A4; margin: 7mm; }
           body { margin: 0; font-family: "Yu Gothic", "Yu Gothic UI", sans-serif; color: #0f172a; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-toolbar { position: sticky; top: 0; z-index: 20; display: flex; justify-content: center; gap: 8px; padding: 10px; background: rgba(248,250,252,.96); border-bottom: 1px solid #e2e8f0; }
+          .print-toolbar button { border: 0; border-radius: 8px; background: #0f172a; color: white; font-size: 13px; padding: 9px 14px; }
           .statement-bundle { width: 100%; }
           .statement-bundle + .statement-bundle { break-before: page; page-break-before: always; }
           .sheet { width: 190mm; margin: 0 auto; border: 1px solid #d8eaf7; border-radius: 24px; padding: 6mm; box-sizing: border-box; background: white; }
@@ -964,9 +693,12 @@ function openPrintWindow(title: string, statements: StatementData[]) {
           .supplement-head p { margin: 3mm 0 0; font-size: 10px; color: #64748b; }
           .supplement-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 3mm; margin-top: 4mm; }
           .section h3 { margin: 0 0 2mm; font-size: 12px; }
+          @media print {
+            .print-toolbar { display: none; }
+          }
         </style>
       </head>
-      <body>${statements
+      <body><div class="print-toolbar"><button type="button" onclick="window.print()">PDF保存 / 印刷</button></div>${statements
         .map(
           (statement) =>
             `<section class="statement-bundle">${renderStatementSheetHtml(statement, assetOrigin)}${renderSupplementHtml(statement)}</section>`,
@@ -976,7 +708,8 @@ function openPrintWindow(title: string, statements: StatementData[]) {
   `);
   nextWindow.document.close();
   nextWindow.focus();
-  window.setTimeout(() => nextWindow.print(), 250);
+  window.setTimeout(() => nextWindow.print(), 500);
+  return true;
 }
 
 export function StatementsScreen() {
@@ -1002,7 +735,6 @@ export function StatementsScreen() {
   const monthExpenses = store.memberExpenses.filter((expense) => expense.month === selectedMonth);
   const monthAdjustments = store.statementAdjustments.filter((adjustment) => adjustment.month === selectedMonth);
   const totalTransferAmount = statements.reduce((sum, statement) => sum + statement.transferAmount, 0);
-  const pdfRenderRef = useRef<HTMLDivElement>(null);
   const [previewId, setPreviewId] = useState("");
   const [showTemplatePreview, setShowTemplatePreview] = useState(false);
   const [panelMode, setPanelMode] = useState<"expense" | "adjustment" | "executive" | null>(null);
@@ -1011,8 +743,6 @@ export function StatementsScreen() {
   const [executiveForm, setExecutiveForm] = useState<MonthlyExecutiveFormState>(
     emptyMonthlyExecutiveForm,
   );
-  const [pdfJob, setPdfJob] = useState<PdfJobState | null>(null);
-  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState("");
   const [error, setError] = useState("");
   const preview = statements.find((statement) => statement.memberId === previewId) ?? null;
@@ -1027,43 +757,17 @@ export function StatementsScreen() {
     setError("");
   };
 
-  const queuePdfDownload = async (fileName: string, targetStatements: StatementData[]) => {
-    if (!targetStatements.length || isPdfGenerating) {
+  const queuePdfDownload = (fileName: string, targetStatements: StatementData[]) => {
+    if (!targetStatements.length) {
       return;
     }
 
-    const pdfWindow = window.open("", "_blank");
-    writePdfPreparingWindow(pdfWindow);
-    setPdfError("");
-    setIsPdfGenerating(true);
-
-    try {
-      flushSync(() => {
-        setPdfJob({
-          fileName,
-          statements: targetStatements,
-        });
-      });
-
-      if (!pdfRenderRef.current) {
-        throw new Error("PDF化する給与明細の準備に失敗しました。");
-      }
-
-      await waitForPdfAssets(pdfRenderRef.current);
-      await downloadStatementsPdfFile(pdfRenderRef.current, fileName, pdfWindow);
+    if (openPrintWindow(fileName, targetStatements)) {
       setPdfError("");
-    } catch (pdfGenerationError) {
-      const errorMessage =
-        pdfGenerationError instanceof Error
-          ? pdfGenerationError.message
-          : "PDFの作成に失敗しました。";
-
-      writePdfErrorWindow(pdfWindow, errorMessage);
-      setPdfError(errorMessage);
-    } finally {
-      setIsPdfGenerating(false);
-      setPdfJob(null);
+      return;
     }
+
+    setPdfError("PDF用の画面を開けませんでした。ブラウザのポップアップ許可を確認してください。");
   };
 
   const openExpensePanel = (expenseId?: string) => {
@@ -1236,11 +940,11 @@ export function StatementsScreen() {
             </button>
             <button
               type="button"
-              onClick={() => void queuePdfDownload(`${selectedMonth}-給与明細一括`, statements)}
-              disabled={!statements.length || isPdfGenerating}
+              onClick={() => queuePdfDownload(`${selectedMonth}-給与明細一括`, statements)}
+              disabled={!statements.length}
               className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
             >
-              {isPdfGenerating ? "PDFを作成中..." : "今月分を一括でPDF発行"}
+              今月分を一括でPDF保存 / 印刷
             </button>
           </div>
         }
@@ -1278,16 +982,14 @@ export function StatementsScreen() {
                     <button
                       type="button"
                       onClick={() =>
-                        void
                         queuePdfDownload(
                           `${statement.memberName}-${statement.month}-給与明細`,
                           [statement],
                         )
                       }
-                      disabled={isPdfGenerating}
-                      className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                      className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white sm:w-auto"
                     >
-                      PDF発行
+                      PDF保存 / 印刷
                     </button>
                     <button type="button" onClick={() => downloadCsv(`leapseed-statement-${selectedMonth}-${statement.memberName}.csv`, buildMemberStatementCsvRows(store, selectedMonth, statement.memberId))} className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-white sm:w-auto">明細CSV</button>
                   </div>
@@ -1473,7 +1175,6 @@ export function StatementsScreen() {
               <button
                 type="button"
                 onClick={() =>
-                  void
                   queuePdfDownload(
                     activePreview.memberId === "__template__"
                       ? `${selectedMonth}-給与明細テンプレート`
@@ -1481,10 +1182,9 @@ export function StatementsScreen() {
                     [activePreview],
                   )
                 }
-                disabled={isPdfGenerating}
-                className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 sm:w-auto"
               >
-                {isPdfGenerating ? "PDFを作成中..." : "PDF発行"}
+                PDF保存 / 印刷
               </button>
               <button
                 type="button"
@@ -1757,12 +1457,6 @@ export function StatementsScreen() {
           </button>
         </div>
       </OverlayPanel>
-
-      <div className="pointer-events-none fixed left-[-200vw] top-0 w-[980px] bg-white">
-        <div ref={pdfRenderRef}>
-          {pdfJob ? <PdfExportPages statements={pdfJob.statements} /> : null}
-        </div>
-      </div>
     </>
   );
 }
