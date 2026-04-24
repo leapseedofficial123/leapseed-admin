@@ -257,33 +257,47 @@ function waitForAnimationFrame() {
   });
 }
 
+function withTimeout<T>(promise: Promise<T>, milliseconds: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const timeoutId = window.setTimeout(() => resolve(fallback), milliseconds);
+    promise
+      .then((value) => resolve(value))
+      .catch(() => resolve(fallback))
+      .finally(() => window.clearTimeout(timeoutId));
+  });
+}
+
 async function waitForPdfAssets(container: HTMLElement) {
   await waitForAnimationFrame();
   await waitForAnimationFrame();
 
   if ("fonts" in document) {
-    await (document as Document & { fonts: FontFaceSet }).fonts.ready;
+    await withTimeout((document as Document & { fonts: FontFaceSet }).fonts.ready, 1200, undefined);
   }
 
   const images = Array.from(container.querySelectorAll("img"));
   await Promise.all(
     images.map(
       (image) =>
-        new Promise<void>((resolve) => {
-          if (image.complete) {
-            resolve();
-            return;
-          }
+        withTimeout(
+          new Promise<void>((resolve) => {
+            if (image.complete) {
+              resolve();
+              return;
+            }
 
-          const finalize = () => resolve();
-          image.addEventListener("load", finalize, { once: true });
-          image.addEventListener("error", finalize, { once: true });
-        }),
+            const finalize = () => resolve();
+            image.addEventListener("load", finalize, { once: true });
+            image.addEventListener("error", finalize, { once: true });
+          }),
+          1500,
+          undefined,
+        ),
     ),
   );
 
   await new Promise<void>((resolve) => {
-    window.setTimeout(resolve, 80);
+    window.setTimeout(resolve, 40);
   });
 }
 
@@ -322,6 +336,51 @@ function writePdfPreparingWindow(pdfWindow: Window | null) {
         <div>
           <strong>PDFを作成中です</strong>
           <p>完了すると、この画面に給与明細PDFが表示されます。</p>
+        </div>
+      </body>
+    </html>
+  `);
+  pdfWindow.document.close();
+}
+
+function writePdfErrorWindow(pdfWindow: Window | null, message: string) {
+  if (!pdfWindow || pdfWindow.closed) {
+    return;
+  }
+
+  pdfWindow.document.open();
+  pdfWindow.document.write(`
+    <html lang="ja">
+      <head>
+        <meta charset="utf-8" />
+        <title>PDF作成エラー</title>
+        <style>
+          body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            font-family: "Yu Gothic", "Yu Gothic UI", sans-serif;
+            color: #0f172a;
+            background: #fff7ed;
+          }
+          div {
+            max-width: 520px;
+            padding: 24px;
+            text-align: center;
+          }
+          p {
+            margin: 12px 0 0;
+            color: #9a3412;
+            font-size: 14px;
+            line-height: 1.8;
+          }
+        </style>
+      </head>
+      <body>
+        <div>
+          <strong>PDFの作成に失敗しました</strong>
+          <p>${escapeHtml(message)}</p>
         </div>
       </body>
     </html>
@@ -383,23 +442,32 @@ async function downloadStatementsPdfFile(
       pdf.addPage();
     }
 
-    const canvas = await html2canvas(pageElement, {
-      backgroundColor: "#ffffff",
-      useCORS: true,
-      logging: false,
-      scale: Math.max(2, Math.min(window.devicePixelRatio || 1, 3)),
-      windowWidth: pageElement.scrollWidth,
-      windowHeight: pageElement.scrollHeight,
-    });
+    const canvas = await withTimeout(
+      html2canvas(pageElement, {
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        scale: Math.max(1.4, Math.min(window.devicePixelRatio || 1, 2)),
+        windowWidth: pageElement.scrollWidth,
+        windowHeight: pageElement.scrollHeight,
+      }),
+      12_000,
+      null,
+    );
 
-    const imageData = canvas.toDataURL("image/png");
+    if (!canvas) {
+      throw new Error("PDF画像の作成に時間がかかったため中断しました。もう一度お試しください。");
+    }
+
+    const imageData = canvas.toDataURL("image/jpeg", 0.92);
     const scale = Math.min(pdfWidth / canvas.width, pdfHeight / canvas.height);
     const width = canvas.width * scale;
     const height = canvas.height * scale;
     const x = (pdfWidth - width) / 2;
     const y = (pdfHeight - height) / 2;
 
-    pdf.addImage(imageData, "PNG", x, y, width, height, undefined, "FAST");
+    pdf.addImage(imageData, "JPEG", x, y, width, height, undefined, "FAST");
   }
 
   openGeneratedPdf(pdf.output("blob"), fileName, pdfWindow);
@@ -454,7 +522,7 @@ function SupplementTable({
   );
 }
 
-function StatementSheet({ statement }: { statement: StatementData }) {
+function StatementSheet({ statement, forPdf = false }: { statement: StatementData; forPdf?: boolean }) {
   const rows = buildDisplayRows(statement);
   const otherRows = buildOtherRewardTableRows(statement);
 
@@ -467,7 +535,17 @@ function StatementSheet({ statement }: { statement: StatementData }) {
         <div className="grid gap-4 lg:grid-cols-[160px_1fr_214px] lg:items-start">
           <div className="flex justify-center pt-1 lg:justify-start">
             <div className="rounded-2xl bg-white px-4 py-3">
-              <BrandLogo width={138} priority className="mx-auto lg:mx-0" />
+              {forPdf ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={withBasePath("/branding/leapseed-logo.png")}
+                  alt="LeapSeed"
+                  className="mx-auto block object-contain lg:mx-0"
+                  style={{ width: 138, height: "auto" }}
+                />
+              ) : (
+                <BrandLogo width={138} priority className="mx-auto lg:mx-0" />
+              )}
             </div>
           </div>
           <div className="pt-1 text-center lg:pt-3">
@@ -679,7 +757,7 @@ function PdfExportPages({ statements }: { statements: StatementData[] }) {
           className={index > 0 ? "mt-6" : ""}
         >
           <div data-pdf-page="true" className="bg-white py-2">
-            <StatementSheet statement={statement} />
+            <StatementSheet statement={statement} forPdf />
           </div>
           {hasStatementSupplement(statement) ? (
             <div data-pdf-page="true" className="bg-white py-2">
@@ -975,15 +1053,13 @@ export function StatementsScreen() {
       await downloadStatementsPdfFile(pdfRenderRef.current, fileName, pdfWindow);
       setPdfError("");
     } catch (pdfGenerationError) {
-      if (pdfWindow && !pdfWindow.closed) {
-        pdfWindow.close();
-      }
-
-      setPdfError(
+      const errorMessage =
         pdfGenerationError instanceof Error
           ? pdfGenerationError.message
-          : "PDFの作成に失敗しました。",
-      );
+          : "PDFの作成に失敗しました。";
+
+      writePdfErrorWindow(pdfWindow, errorMessage);
+      setPdfError(errorMessage);
     } finally {
       setIsPdfGenerating(false);
       setPdfJob(null);
