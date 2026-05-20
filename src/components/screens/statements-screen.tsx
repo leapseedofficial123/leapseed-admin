@@ -652,6 +652,7 @@ function openPrintWindow(title: string, statements: StatementData[]) {
           body { margin: 0; font-family: "Yu Gothic", "Yu Gothic UI", sans-serif; color: #0f172a; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .print-toolbar { position: sticky; top: 0; z-index: 20; display: flex; justify-content: center; gap: 8px; padding: 10px; background: rgba(248,250,252,.96); border-bottom: 1px solid #e2e8f0; }
           .print-toolbar button { border: 0; border-radius: 8px; background: #0f172a; color: white; font-size: 13px; padding: 9px 14px; }
+          .print-toolbar .back-button { border: 1px solid #cbd5e1; background: #fff; color: #334155; }
           .statement-bundle { width: 100%; }
           .statement-bundle + .statement-bundle { break-before: page; page-break-before: always; }
           .sheet { width: 190mm; margin: 0 auto; border: 1px solid #d8eaf7; border-radius: 24px; padding: 6mm; box-sizing: border-box; background: white; }
@@ -698,7 +699,7 @@ function openPrintWindow(title: string, statements: StatementData[]) {
           }
         </style>
       </head>
-      <body><div class="print-toolbar"><button type="button" onclick="window.print()">PDF保存 / 印刷</button></div>${statements
+      <body><div class="print-toolbar"><button type="button" class="back-button" onclick="if (window.opener) { window.close(); } else { window.history.back(); }">戻る</button><button type="button" onclick="window.print()">PDF保存 / 印刷</button></div>${statements
         .map(
           (statement) =>
             `<section class="statement-bundle">${renderStatementSheetHtml(statement, assetOrigin)}${renderSupplementHtml(statement)}</section>`,
@@ -1022,7 +1023,7 @@ export function StatementsScreen() {
               : "この月は固定役員設定を使用"}
           </Badge>
           <span className="text-sm text-slate-500">
-            会社取り分合計 {formatCurrency(currentSnapshot.totalCompanyShare)} を母数に計算します。
+            会社取り分から月全体経費・個人経費を差し引いた {formatCurrency(currentSnapshot.executiveRewardBase)} を母数に計算します。
           </span>
         </div>
 
@@ -1185,6 +1186,16 @@ export function StatementsScreen() {
                 className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm text-white transition hover:bg-slate-800 sm:w-auto"
               >
                 PDF保存 / 印刷
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewId("");
+                  setShowTemplatePreview(false);
+                }}
+                className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 sm:w-auto"
+              >
+                戻る
               </button>
               <button
                 type="button"
@@ -1407,11 +1418,11 @@ export function StatementsScreen() {
               <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3">
                 <p className="text-xs text-slate-500">計算母数</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
-                  会社取り分合計 {formatCurrency(currentSnapshot.totalCompanyShare)}
+                  役員報酬の計算対象 {formatCurrency(currentSnapshot.executiveRewardBase)}
                 </p>
                 <p className="mt-2 text-sm text-slate-500">
-                  1% = {formatCurrency(Math.round(currentSnapshot.totalCompanyShare * 0.01))}
-                  {" / "}2% = {formatCurrency(Math.round(currentSnapshot.totalCompanyShare * 0.02))}
+                  1% = {formatCurrency(Math.round(currentSnapshot.executiveRewardBase * 0.01))}
+                  {" / "}2% = {formatCurrency(Math.round(currentSnapshot.executiveRewardBase * 0.02))}
                 </p>
               </div>
             </div>

@@ -207,6 +207,7 @@ export interface MonthlyPayrollSnapshot {
   month: string;
   totalSales: number;
   totalCompanyShare: number;
+  executiveRewardBase: number;
   totalProjectReward: number;
   totalReferralReward: number;
   totalExecutiveReward: number;

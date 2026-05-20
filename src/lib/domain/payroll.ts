@@ -180,7 +180,7 @@ function buildReferralFinalSalaries(
 function buildExecutiveRewards(
   store: AppDataStore,
   month: string,
-  totalCompanyShare: number,
+  executiveRewardBase: number,
 ): {
   rewardByMemberId: Record<string, number>;
   mode: ExecutiveRewardMode;
@@ -197,7 +197,7 @@ function buildExecutiveRewards(
     for (const assignment of assignments) {
       rewardByMemberId[assignment.memberId] =
         (rewardByMemberId[assignment.memberId] ?? 0) +
-        roundMoney(totalCompanyShare * assignment.rate);
+        roundMoney(executiveRewardBase * assignment.rate);
     }
 
     return {
@@ -214,7 +214,7 @@ function buildExecutiveRewards(
     }
 
     rewardByMemberId[member.id] = roundMoney(
-      totalCompanyShare * member.executiveCompensationRate,
+      executiveRewardBase * member.executiveCompensationRate,
     );
   }
 
@@ -302,9 +302,6 @@ export function buildMonthlyPayroll(store: AppDataStore, month: string): Monthly
     includedDeals.reduce((sum, deal) => sum + deal.companyShare, 0),
   );
 
-  const executiveRewards = buildExecutiveRewards(store, month, totalCompanyShare);
-  const executiveRewardByMemberId = executiveRewards.rewardByMemberId;
-
   const adjustmentByMemberId: Record<string, number> = {};
   for (const adjustment of store.salaryAdjustments) {
     if (adjustment.month !== month) {
@@ -324,6 +321,18 @@ export function buildMonthlyPayroll(store: AppDataStore, month: string): Monthly
     personalExpenseByMemberId[expense.memberId] =
       (personalExpenseByMemberId[expense.memberId] ?? 0) + expense.amount;
   }
+
+  const monthlySetting = store.monthlySettings.find((item) => item.month === month);
+  const operatingExpense = roundMoney(monthlySetting?.expense ?? 0);
+  const totalPersonalExpensesBeforePayroll = roundMoney(
+    Object.values(personalExpenseByMemberId).reduce((sum, amount) => sum + amount, 0),
+  );
+  const executiveRewardBase = Math.max(
+    0,
+    roundMoney(totalCompanyShare - operatingExpense - totalPersonalExpensesBeforePayroll),
+  );
+  const executiveRewards = buildExecutiveRewards(store, month, executiveRewardBase);
+  const executiveRewardByMemberId = executiveRewards.rewardByMemberId;
 
   const baseSalaryByMemberId: Record<string, number> = {};
   for (const member of store.members) {
@@ -367,7 +376,6 @@ export function buildMonthlyPayroll(store: AppDataStore, month: string): Monthly
     });
   }
 
-  const monthlySetting = store.monthlySettings.find((item) => item.month === month);
   const memberSummaries = store.members
     .map((member) => {
       const monthlySales = roundMoney(monthlySalesByMemberId[member.id] ?? 0);
@@ -454,13 +462,13 @@ export function buildMonthlyPayroll(store: AppDataStore, month: string): Monthly
   const totalSalary = roundMoney(
     memberSummaries.reduce((sum, summary) => sum + summary.finalSalary, 0),
   );
-  const operatingExpense = roundMoney(monthlySetting?.expense ?? 0);
   const expenses = roundMoney(operatingExpense + totalPersonalExpenses);
 
   return {
     month,
     totalSales,
     totalCompanyShare,
+    executiveRewardBase,
     totalProjectReward,
     totalReferralReward,
     totalExecutiveReward,

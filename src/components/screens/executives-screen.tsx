@@ -146,9 +146,9 @@ export function ExecutivesScreen() {
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">会社取り分合計</p>
+              <p className="text-xs text-slate-500">役員報酬の計算対象</p>
               <p className="mt-1 font-semibold text-slate-900">
-                {formatCurrency(currentSnapshot.totalCompanyShare)}
+                {formatCurrency(currentSnapshot.executiveRewardBase)}
               </p>
             </div>
             <div>
