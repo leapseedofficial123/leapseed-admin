@@ -645,12 +645,13 @@ function openPrintWindow(title: string, statements: StatementData[]) {
     <html lang="ja">
       <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>${escapeHtml(title)}</title>
         <base href="${origin}/" />
         <style>
           @page { size: A4; margin: 7mm; }
           body { margin: 0; font-family: "Yu Gothic", "Yu Gothic UI", sans-serif; color: #0f172a; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .print-toolbar { position: sticky; top: 0; z-index: 20; display: flex; justify-content: center; gap: 8px; padding: 10px; background: rgba(248,250,252,.96); border-bottom: 1px solid #e2e8f0; }
+          .print-toolbar { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: rgba(248,250,252,.96); border-bottom: 1px solid #e2e8f0; }
           .print-toolbar button { border: 0; border-radius: 8px; background: #0f172a; color: white; font-size: 13px; padding: 9px 14px; }
           .print-toolbar .back-button { border: 1px solid #cbd5e1; background: #fff; color: #334155; }
           .statement-bundle { width: 100%; }
@@ -735,6 +736,8 @@ export function StatementsScreen() {
   const usesMonthlyExecutiveAssignments = enabledMonthExecutiveAssignments.length > 0;
   const monthExpenses = store.memberExpenses.filter((expense) => expense.month === selectedMonth);
   const monthAdjustments = store.statementAdjustments.filter((adjustment) => adjustment.month === selectedMonth);
+  const monthCompanyExpense =
+    store.monthlySettings.find((setting) => setting.month === selectedMonth)?.expense ?? 0;
   const totalTransferAmount = statements.reduce((sum, statement) => sum + statement.transferAmount, 0);
   const [previewId, setPreviewId] = useState("");
   const [showTemplatePreview, setShowTemplatePreview] = useState(false);
@@ -1023,7 +1026,7 @@ export function StatementsScreen() {
               : "この月は固定役員設定を使用"}
           </Badge>
           <span className="text-sm text-slate-500">
-            会社取り分から月全体経費・個人経費を差し引いた {formatCurrency(currentSnapshot.executiveRewardBase)} を母数に計算します。
+            会社取り分から会社全体経費と個人経費合計を差し引いた {formatCurrency(currentSnapshot.executiveRewardBase)} を母数に計算します。
           </span>
         </div>
 
@@ -1419,6 +1422,11 @@ export function StatementsScreen() {
                 <p className="text-xs text-slate-500">計算母数</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">
                   役員報酬の計算対象 {formatCurrency(currentSnapshot.executiveRewardBase)}
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  会社取り分 {formatCurrency(currentSnapshot.totalCompanyShare)}
+                  {" - "}会社全体経費 {formatCurrency(monthCompanyExpense)}
+                  {" - "}個人経費合計 {formatCurrency(currentSnapshot.totalPersonalExpenses)}
                 </p>
                 <p className="mt-2 text-sm text-slate-500">
                   1% = {formatCurrency(Math.round(currentSnapshot.executiveRewardBase * 0.01))}

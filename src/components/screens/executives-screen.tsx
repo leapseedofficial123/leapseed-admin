@@ -172,6 +172,11 @@ export function ExecutivesScreen() {
               </p>
             </div>
           </div>
+          <p className="mt-4 text-sm text-slate-500">
+            役員報酬の計算対象 = 会社取り分 {formatCurrency(currentSnapshot.totalCompanyShare)}
+            {" - "}会社全体経費 {formatCurrency(currentSetting.expense)}
+            {" - "}個人経費合計 {formatCurrency(currentSnapshot.totalPersonalExpenses)}
+          </p>
           {currentSetting.note ? (
             <p className="mt-4 text-sm leading-6 text-slate-600">{currentSetting.note}</p>
           ) : (
